@@ -29,17 +29,20 @@ class WV2Dataset(utils.Dataset):
     
         return image
     
-    def load_wv2(self, dataset_dir, subset):
+    def load_imagery(self, dataset_dir, subset, image_source, class_name):
         """Load a subset of the fields dataset.
 
         dataset_dir: Root directory of the dataset
         subset: Subset to load.
                 * train: training images/masks excluding testing
                 * test: testing images moved by train/test split func
+        image_source: string identifier for imagery. "wv2" or "planet"
+        class_name: string name for class. "agriculture" or another name 
+                depending on labels. self.add_class for multi class model.
         """
         # Add classes. We have one class.
         # Naming the dataset wv2, and the class agriculture
-        self.add_class("wv2", 1, "agriculture")
+        self.add_class(image_source, 1, class_name)
         assert subset in ["train", "test"]
         dataset_dir = os.path.join(dataset_dir, subset)
         train_ids = pd.read_csv(os.path.join(RESULTS_DIR, 'train_ids.csv'))
@@ -55,9 +58,9 @@ class WV2Dataset(utils.Dataset):
         # Add images
         for image_id in image_ids:
             self.add_image(
-                "wv2",
+                image_source,
                 image_id=image_id,
-                path=os.path.join(dataset_dir, str(image_id), "image/{}.tif".format(str(image_id))))
+                path=os.path.join(dataset_dir, str(image_id), "image/{}.tif".format(str(image_id)+'_GS_RGB')))
     
     def load_mask(self, image_id):
         """Generate instance masks for an image.

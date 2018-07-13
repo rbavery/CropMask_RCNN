@@ -98,12 +98,6 @@ def train(model, dataset_dir, subset):
                 augmentation=augmentation,
                 layers='all')
 
-
-
-############################################################
-#  RLE Encoding
-############################################################
-
 ############################################################
 #  RLE Encoding
 ############################################################
@@ -180,7 +174,7 @@ def detect(model, dataset_dir, subset):
 
     # Read dataset
     dataset = wv2_dataset.WV2Dataset(3)
-    dataset.load_wv2(dataset_dir, subset)
+    dataset.load_imagery(dataset_dir, subset, image_source='wv2', class_name='agriculture')
     dataset.prepare()
     # Load over images
     submission = []

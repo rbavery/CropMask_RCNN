@@ -45,7 +45,7 @@ class WV2Config(Config):
     # Batch size is 4 (GPUs * images/GPU).
     # New parralel_model.py allows for multi-gpu
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 4
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # background + ag
@@ -56,23 +56,23 @@ class WV2Config(Config):
     #     "to avoid fractions when downscaling and upscaling."
     #    "For example, use 256, 320, 384, 448, 512, ... etc. "
     IMAGE_RESIZE_MODE = "square"
-    IMAGE_MIN_DIM = 1024
-    IMAGE_MAX_DIM = 1024
+    IMAGE_MIN_DIM = 512
+    IMAGE_MAX_DIM = 512
 
     # Use smaller anchors because our image and objects are small.
     # Setting Large upper scale since some fields take up nearly 
     # whole image
-    RPN_ANCHOR_SCALES = (100, 150, 250, 350, 512)  # anchor side in pixels, determined using inspect_crop_data.ipynb
+    RPN_ANCHOR_SCALES = (25, 75, 125, 250, 350)  # anchor side in pixels, determined using inspect_crop_data.ipynb
 
     # Reduce training ROIs per image because the images are small and have
     # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
     TRAIN_ROIS_PER_IMAGE = 100
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 1000
+    STEPS_PER_EPOCH = 500
     
     #reduces the max number of field instances
-    MAX_GT_INSTANCES = 7 # determined using inspect_crop_data.ipynb
+    MAX_GT_INSTANCES = 63 # determined using inspect_crop_data.ipynb
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 100
