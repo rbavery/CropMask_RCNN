@@ -46,7 +46,7 @@ ROOT_DIR = os.path.abspath("../../")
 sys.path.append(ROOT_DIR)  # To find local version of the library
 import wv2_preprocess
 import wv2_config
-import wv2_dataset
+import datasets
 import datetime
 from imgaug import augmenters as iaa
 # Import Mask RCNN
@@ -68,13 +68,13 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 def train(model, dataset_dir, subset):
     """Train the model."""
     # Training dataset.
-    dataset_train = wv2_dataset.WV2Dataset()
-    dataset_train.load_wv2(dataset_dir, "train")
+    dataset_train = dataset.WV2Dataset()
+    dataset_train.load_imagery(dataset_dir, "train", image_source='wv2', class_name='agriculture')
     dataset_train.prepare()
 
     # Validation dataset
-    dataset_val = wv2_dataset.WV2Dataset()
-    dataset_val.load_wv2(dataset_dir, "test")
+    dataset_val = dataset.WV2Dataset()
+    dataset_val.load_imagery(dataset_dir, "test", image_source='wv2', class_name='agriculture')
     dataset_val.prepare()
 
     # Image augmentation
@@ -84,9 +84,7 @@ def train(model, dataset_dir, subset):
         iaa.Flipud(0.5),
         iaa.OneOf([iaa.Affine(rotate=90),
                    iaa.Affine(rotate=180),
-                   iaa.Affine(rotate=270)]),
-        iaa.Multiply((0.8, 1.5)),
-        iaa.GaussianBlur(sigma=(0.0, 5.0))
+                   iaa.Affine(rotate=270)])
     ])
 
     # *** This training schedule is an example. Update to your needs ***

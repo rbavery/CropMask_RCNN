@@ -37,10 +37,10 @@ class WV2Config(Config):
     # Image mean (RGBN RGBN) from WV2_MRCNN_PRE.ipynb
     # filling with N values, need to compute mean of each channel
     # values are for gridded wv2 no partial grids
-    MEAN_PIXEL = np.array([173.768833372328, 255.41574949688382, 181.65521483951144])
+    MEAN_PIXEL = np.array([200.05, 274.7, 164.04])
     
     # Give the configuration a recognizable name
-    NAME = "wv2-gridded-no-partial"
+    NAME = "wv2-512-cp-labels-allgrowing"
 
     # Batch size is 4 (GPUs * images/GPU).
     # New parralel_model.py allows for multi-gpu
@@ -86,7 +86,7 @@ class WV2Config(Config):
     
     # If enabled, resizes instance masks to a smaller size to reduce
     # memory load. Recommended when using high-resolution images.
-    USE_MINI_MASK = True
+    USE_MINI_MASK = False
     MINI_MASK_SHAPE = (56, 56)  # (height, width) of the mini-mask
     
 
