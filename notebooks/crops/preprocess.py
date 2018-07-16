@@ -8,30 +8,18 @@ import skimage.io as skio
 import warnings
 import pandas as pd
 import numpy as np
+import pathlib
+import preprcess_configs
 
-ROOT_DIR = os.path.abspath("../../")
-DATASET_DIR = os.path.join(ROOT_DIR, 'data/raw/wv2')
-REORDERED_DIR = os.path.join(DATASET_DIR, 'reordered_tifs')
-TRAIN_DIR = os.path.join(DATASET_DIR, 'train')
-TEST_DIR = os.path.join(DATASET_DIR, 'test')
-WV2_DIR = os.path.join(DATASET_DIR, 'adjusted_gridded_tifs')
-LABELS_DIR = os.path.join(DATASET_DIR, 'adjusted_gridded_labels')
-CONNECTED_COMP_DIR = os.path.join(DATASET_DIR, 'connected_component_labels')
-OPENED_LABELS_DIR = os.path.join(DATASET_DIR, 'opened_labels')
-# Results directory
-# Save submission files and test/train split csvs here
-RESULTS_DIR = os.path.join(ROOT_DIR, "results/wv2/") 
-try:
-    os.mkdir(OPENED_LABELS_DIR)
-    os.mkdir(CONNECTED_COMP_DIR)
-    os.mkdir(REORDERED_DIR)
-    os.mkdir(MODEL_DIR)
-    os.mkdir(TRAIN_DIR)
-    os.mkdir(TEST_DIR)
-    os.mkdir(WV2_DIR)
-    os.mkdir(LABELS_DIR)
-except:
-    FileExistsError
+# list of directories to loop over
+dirs = [ROOT_DIR, DATASET_DIR, REORDERED_DIR, TRAIN_DIR, TEST_DIR, WV2_DIR, LABELS_DIR, CONNECTED_COMP_DIR, OPENED_LABELS_DIR, RESULTS_DIR]
+
+# Make directory and subdirectories
+for d in dirs:
+    pathlib.Path(d).mkdir(parents=True, exist_ok=True)
+
+# Change working directory to aqua project directory
+os.chdir(ROOT_DIR)
     
 random.seed(4)
 
