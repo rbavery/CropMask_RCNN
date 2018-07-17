@@ -64,17 +64,7 @@ class PPConfig():
     
     NEG_BUFFER = 2 # in meters, neg buffer on vectors before they are rasterized
     
-    OPENING_KERNEL = (5, 5) # for seperating some touching fields into distinct fields, partialy deals with touching pixels.
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    OPENING_KERNEL = (5, 5) # for seperating some touching fields into distinct fields, partialy deals with touching pixels.    
     
 
 class WV2Config():
