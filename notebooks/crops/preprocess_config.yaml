@@ -1,0 +1,32 @@
+dirs:
+    root: /home/rave/tana-crunch/waves/cropmask/data
+    dataset: test
+    reorder: reorder
+    train: train
+    test: test
+    gridded_imgs: wv2_grid_imgs
+    gridded_labels: wv2_grid_labels
+    opened: opened_labels
+    instances: instances
+    results: results
+    source_imgs: projected_tiffs
+    source_labels: original_steph_labels
+    neg_buffered_labels: neg_buffered_labels
+seasons:
+    GS: true
+    OS: true
+bands_to_include:
+    - coastal: false
+    - blue: true
+    - green: true
+    - yellow: false
+    - red: true
+    - red_edge: false
+    - near_IR1: false
+    - near_IR2: false
+image_vals:
+    grid_size: 512 
+    usable_thresh: .25 #image must have at least 25% of values that are non zero from either cloud masking or gridding
+label_vals:
+    neg_buffer: -.5 # in meters, applied on vectors before they are rasterized to reduce spurious instance overlap
+    opening: 5 # square kenrel size for erion then dilation of raterized instance labels to reduce overlap

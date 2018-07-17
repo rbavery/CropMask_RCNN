@@ -9,21 +9,68 @@ import warnings
 import pandas as pd
 import numpy as np
 import pathlib
-import preprcess_configs
+from difflib import SequenceMatcher
+import yaml
 
-# list of directories to loop over
-dirs = [ROOT_DIR, DATASET_DIR, REORDERED_DIR, TRAIN_DIR, TEST_DIR, WV2_DIR, LABELS_DIR, CONNECTED_COMP_DIR, OPENED_LABELS_DIR, RESULTS_DIR]
+import gdal # for gridding
 
-# Make directory and subdirectories
-for d in dirs:
-    pathlib.Path(d).mkdir(parents=True, exist_ok=True)
-
-# Change working directory to aqua project directory
-os.chdir(ROOT_DIR)
-    
 random.seed(4)
 
 def preprocess():
+    
+    def parse_yaml(input_file):
+    """Parse yaml file of configuration parameters."""
+    with open(input_file, 'r') as yaml_file:
+        params = yaml.load(yaml_file)
+    return params
+
+    params = parse_yaml('preprocess_config.yaml') 
+
+    ROOT = params['dirs']['root']
+
+    DATASET = os.path.join(
+        ROOT, params['dirs']['dataset'])
+
+    REORDER = os.path.join(
+        DATASET, params['dirs']['reorder'])
+
+    TRAIN = os.path.join(
+        DATASET, params['dirs']['train'])
+
+    TEST = os.path.join(
+        DATASET, params['dirs']['test'])
+
+    GRIDDED_IMGS = os.path.join(
+        DATASET, params['dirs']['gridded_imgs'])
+
+    GRIDDED_LABELS = os.path.join(
+        DATASET, params['dirs']['gridded_labels'])
+
+    OPENED = os.path.join(
+        DATASET, params['dirs']['opened'])
+
+    INSTANCES = os.path.join(
+        DATASET, params['dirs']['instances'])
+    
+    NEG_BUFFERED = os.path.join(
+        DATASET, params['dirs']['neg_buffered_labels'])
+
+    RESULTS = os.path.join(ROOT,'../',params['dirs']['results'], params['dirs']['dataset'])
+
+    SOURCE_IMGS = os.path.join(
+        ROOT, params['dirs']['source_imgs'])
+
+    SOURCE_LABELS = os.path.join(
+        ROOT, params['dirs']['source_labels'])
+
+    dirs = [DATASET, REORDER, TRAIN, TEST, GRIDDED_IMGS, GRIDDED_LABELS, OPENED, INSTANCES, RESULTS]
+
+    # Make directory and subdirectories
+    for d in dirs:
+        pathlib.Path(d).mkdir(parents=False, exist_ok=False)
+
+    # Change working directory to project directory
+    os.chdir(dirs[1])
     
     def remove_dir_folders(directory):
         '''
@@ -33,45 +80,139 @@ def preprocess():
         folderlist = [ f for f in os.listdir(directory)]
         for f in folderlist:
             shutil.rmtree(os.path.join(directory,f))
+    
+    def yaml_to_band_index(params):
+        band_list = []
+        for i, band in enumerate(params['bands_to_include']):
+            if list(band.values())[0]== True:
+                band_list.append(i)
+        return band_list
+    
+    def reorder_images(params):
+    """Load the os, gs, or both images and subset bands. Growing
+    Season is stacked first before OS if both true.
+    """
+        file_ids_all = next(os.walk(SOURCE_IMGS))[2]
+        band_indices = yaml_to_band_index(params)
+        image_ids_gs = sorted([image_id for image_id in file_ids_all \
+                               if 'GS' in image_id and '.aux' not in image_id])
+        image_ids_os = sorted([image_id for image_id in file_ids_all \
+                               if 'OS' in image_id and '.aux' not in image_id])
 
-    def load_merge_wv2(image_id, source_dir):
-        """Load the specified wv2 os/gs image pairs and return a [H,W,3] 
-        Numpy array. Channels are ordered [B, G, R], Growing Season 
-        Keeping dode comments for stacking on/off season into 8 channel tensor.
+        if params['seasons']['GS'] and params['seasons']['OS'] == False:
+            for img_path in image_ids_gs:
+                gs_image = skio.imread(os.path.join(SOURCE_IMGS, img_path))
+                gs_image = gs_image[:,:,band_indices]
+                skio.imsave(gs_image_path, gs_image, plugin='tifffile')
+
+        elif params['seasons']['OS'] and params['seasons']['GS'] == False:
+            for img_path in image_ids_os:
+                os_image = skio.imread(os.path.join(SOURCE_IMGS, img_path))
+                os_image = gs_image[:,:,band_indices]
+                skio.imsave(os_image_path, os_image, plugin='tifffile')
+        else:
+            for gs_path, os_path in zip(image_ids_gs, image_ids_os):
+                print(gs_path, os_path)
+                gs_image = skio.imread(os.path.join(SOURCE_IMGS, gs_path))
+                os_image = skio.imread(os.path.join(SOURCE_IMGS, os_path))
+                gsos_image = np.dstack([gs_image[:,:,band_indices], os_image[:,:,band_indices]])
+
+                match = SequenceMatcher(None, gs_path, os_path).find_longest_match(0, len(gs_path), 0, len(os_path))
+                path = gs_path[match.b: match.b + match.size] 
+                # this may need to be reworked for diff file names
+                # works best if unique ids like GS go in front of filename
+                gsos_image_path = os.path.join(REORDER, path + 'OSGS.tif')
+                skio.imsave(gsos_image_path, gsos_image, plugin='tifffile')
+                
+    def negative_buffer(params):
         """
-        # Load image
-        gs_path = source_dir+'/'+image_id+'_MS_GS.tif'
-        gs_image = skio.imread(gs_path)
-        # If has more than 4 bands, select correct bands 
-        # will need to provide image config in future
-        # to programmaticaly use correct band mappings
-        if gs_image.shape[-1] != 3:
-            assert gs_image.shape == (512, 512, 8)
-            gs_image = np.dstack((gs_image[:,:,1:3],gs_image[:,:,4])) #RGB for wv2
-        #Need to functionalize all of these floating for loops
-        gs_image_path = REORDERED_DIR +'/'+ image_id + '_GS_RGB.tif'
-        assert gs_image.ndim == 3
-        gs_image[gs_image < 0]=0
-        assert gs_image.shape == (512, 512, 3)
-        skio.imsave(gs_image_path, gs_image, plugin='tifffile')
-            
-    # all files, including ones we don't care about
-    file_ids_all = next(os.walk(WV2_DIR))[2]
-    # all multispectral on and off season tifs
-    image_ids_all = [image_id for image_id in file_ids_all if 'MS' in image_id and '.aux' not in image_id]
-    #check for duplicates
-    assert len(image_ids_all) == len(set(image_ids_all))
+        Applies a negative buffer to wv2 labels since they are too clsoe together and 
+        produce conjoined instances when connected components is performed (even after 
+        erosion/dilation). This may not get rid of all conjoinments and should be adjusted.
+        It relies too on the source projection of the label file to calculate distances for
+        the negative buffer. Unsure at what scale projection would matter in calculating this 
+        distance.
+        """
+        neg_buffer = float(params['label_vals']['neg_buffer'])
+        # This is a helper  used with sorted for a list of strings by specific indices in 
+        # each string. Was used for a long path that ended with a file name
+        # Not needed here but may be with different source imagery and labels
+        def takefirst_two(elem):
+            return int(elem[-12:-10])
 
-    image_ids_gs = [image_id for image_id in image_ids_all if 'GS' in image_id]
-    #image_ids_os = [image_id for image_id in image_ids_all if 'OS' in image_id]
+        items = os.listdir(SOURCE_LABELS)
+        labels = []
+        for name in items:
+            if name.endswith(".shp"):
+                labels.append(os.path.join(SOURCE_LABELS,name))  
 
-    #check for equality
-    # assert len(image_ids_os) == len(image_ids_gs)
-    # only select growing season images
-    image_ids_short = [image_id[0:9] for image_id in image_ids_gs]
+        shp_list = sorted(labels)
 
-    for imid in image_ids_short:
-        load_merge_wv2(imid, WV2_DIR)
+        scenes = os.listdir(SOURCE_IMGS)
+
+        img_list = []
+        for name in scenes:
+            img_list.append(os.path.join(SOURCE_IMGS,name))  
+
+        img_list = sorted(img_list)
+
+
+        for shp_path, img_path in zip(shp_list, img_list):
+            print(shp_path)
+            shp_frame = gpd.read_file(shp_path)
+
+            with rasterio.open(img_path) as rast:
+                meta = rast.meta.copy()
+                meta.update(compress="lzw")
+                meta['count'] = 1
+
+            rasterized_name = os.path.join(NEG_BUFFERED, os.path.basename(shp_path))
+            with rasterio.open(rasterized_name, 'w+', **meta) as out:
+                out_arr = out.read(1)
+                # this is where we create a generator of geom, value pairs to use in rasterizing
+                shp_frame['DN'].iloc[0] = 0
+                shp_frame['DN'].iloc[1:] = 1
+                maxx_bound = shp_frame.bounds.maxx.max()
+                minx_bound = shp_frame.bounds.minx.min()
+                if maxx_bound >= 30 and minx_bound>= 30:
+                    shp_frame = shp_frame.to_crs({'init': 'epsg:32736'})
+                    shp_frame['geometry'] = shp_frame['geometry'].buffer(neg_buffer)
+                    shp_frame = shp_frame.to_crs({'init': 'epsg:4326'})
+
+                else:
+                    shp_frame = shp_frame.to_crs({'init': 'epsg:32735'})
+                    shp_frame['geometry'] = shp_frame['geometry'].buffer(neg_buffer)
+                    shp_frame = shp_frame.to_crs({'init': 'epsg:4326'})
+
+                # hacky way of getting rid of empty geometries
+                shp_frame = shp_frame[shp_frame.Shape_Area > 9e-11]
+                shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
+
+                burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform)
+                out.write_band(1, burned)
+                
+    
+                
+    def grid_images(params):
+        """
+        Grids up imagery to a variable size. Filters out imagery with too little usable data.
+        """
+        
+        reorder_images(params)
+        usable_data_threshold = params['image_vals']['usable_thresh']
+        label_list = sorted(next(os.walk(SOURCE_LABELS))[2])
+        img_list = sorted(next(os.walk(SOURCE_LABELS))[2])
+        
+        
+    
+    def remove_dir_folders(directory):
+        '''
+        Removes all files and sub-folders in a folder and keeps the folder.
+        '''
+    
+        folderlist = [ f for f in os.listdir(directory)]
+        for f in folderlist:
+            shutil.rmtree(os.path.join(directory,f))
 
     image_list = next(os.walk(REORDERED_DIR))[2]
     
@@ -130,7 +271,7 @@ def preprocess():
 
     def move_mask_to_folder(filename):
         '''Moves a mask with identifier pattern ZA0165086_label_1.tif to a 
-        folder path ZA0165086/mask/ZA0165086_label_01.tif. Need to run 
+        folder path ZA0165086/mask/ZA0165086_label_1.tif. Need to run 
         connected components first.
         '''
         if os.path.isdir(os.path.join(TRAIN_DIR,filename[:9])):
