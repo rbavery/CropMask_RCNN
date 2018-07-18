@@ -14,7 +14,7 @@ dirs:
     neg_buffered_labels: neg_buffered_labels
 seasons:
     GS: true
-    OS: true
+    OS: false
 bands_to_include:
     - coastal: false
     - blue: true
@@ -29,4 +29,6 @@ image_vals:
     usable_thresh: .25 #image must have at least 25% of values that are non zero from either cloud masking or gridding
 label_vals:
     neg_buffer: -.5 # in meters, applied on vectors before they are rasterized to reduce spurious instance overlap
-    opening: 5 # square kenrel size for erion then dilation of raterized instance labels to reduce overlap
+    small_area_filter: 100 # in area meters, removes fields with area less than 100 meters from labels 
+    open: false # whether or not to apply opening. Should not be necessary if neg buffer and small_area_filter is successfull
+    kernel: 5 # square kenrel size for erion then dilation of raterized instance labels to reduce overlap

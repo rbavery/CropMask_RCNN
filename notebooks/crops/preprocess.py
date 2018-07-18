@@ -123,22 +123,25 @@ def preprocess():
                 # works best if unique ids like GS go in front of filename
                 gsos_image_path = os.path.join(REORDER, path + 'OSGS.tif')
                 skio.imsave(gsos_image_path, gsos_image, plugin='tifffile')
-                
-    def negative_buffer(params):
+
+    def negative_buffer_and_small_filter(params):
         """
-        Applies a negative buffer to wv2 labels since they are too clsoe together and 
-        produce conjoined instances when connected components is performed (even after 
+        Applies a negative buffer to wv2 labels since some are too close together and 
+        produce conjoined instances when connected components is run (even after 
         erosion/dilation). This may not get rid of all conjoinments and should be adjusted.
         It relies too on the source projection of the label file to calculate distances for
-        the negative buffer. Unsure at what scale projection would matter in calculating this 
-        distance.
+        the negative buffer. Currently hardcodes in projections, need to look up utm pojection
+        based on spatial location somehow if I'm to extend this to work with labels anywhere.
+
+        Returns rasterized labels that are ready to be gridded
         """
         neg_buffer = float(params['label_vals']['neg_buffer'])
+        small_area_filter = float(params['label_vals']['small_area_filter'])
         # This is a helper  used with sorted for a list of strings by specific indices in 
         # each string. Was used for a long path that ended with a file name
         # Not needed here but may be with different source imagery and labels
-        def takefirst_two(elem):
-            return int(elem[-12:-10])
+        # def takefirst_two(elem):
+        #     return int(elem[-12:-10])
 
         items = os.listdir(SOURCE_LABELS)
         labels = []
@@ -147,9 +150,9 @@ def preprocess():
                 labels.append(os.path.join(SOURCE_LABELS,name))  
 
         shp_list = sorted(labels)
-
+        # need to use Source imagery for geotransform data for rasterized shapes, didn't preserve when save imgs to reorder
         scenes = os.listdir(SOURCE_IMGS)
-
+        scenes = [scene for scene in scenes if 'GS' in scene]
         img_list = []
         for name in scenes:
             img_list.append(os.path.join(SOURCE_IMGS,name))  
@@ -158,67 +161,116 @@ def preprocess():
 
 
         for shp_path, img_path in zip(shp_list, img_list):
-            print(shp_path)
             shp_frame = gpd.read_file(shp_path)
-
             with rasterio.open(img_path) as rast:
                 meta = rast.meta.copy()
                 meta.update(compress="lzw")
                 meta['count'] = 1
-
-            rasterized_name = os.path.join(NEG_BUFFERED, os.path.basename(shp_path))
+            tifname = os.path.splitext(os.path.basename(shp_path))[0] + '.tif'
+            rasterized_name = os.path.join(NEG_BUFFERED, tifname)
             with rasterio.open(rasterized_name, 'w+', **meta) as out:
                 out_arr = out.read(1)
-                # this is where we create a generator of geom, value pairs to use in rasterizing
-                shp_frame['DN'].iloc[0] = 0
-                shp_frame['DN'].iloc[1:] = 1
+                # we get bounds to deterimine which projection to use for neg buffer
+                shp_frame.loc[0,'DN'] = 0
+                shp_frame.loc[1:,'DN'] = 1
                 maxx_bound = shp_frame.bounds.maxx.max()
                 minx_bound = shp_frame.bounds.minx.min()
                 if maxx_bound >= 30 and minx_bound>= 30:
                     shp_frame = shp_frame.to_crs({'init': 'epsg:32736'})
                     shp_frame['geometry'] = shp_frame['geometry'].buffer(neg_buffer)
+                    shp_frame['Shape_Area'] = shp_frame.area
                     shp_frame = shp_frame.to_crs({'init': 'epsg:4326'})
 
                 else:
                     shp_frame = shp_frame.to_crs({'init': 'epsg:32735'})
                     shp_frame['geometry'] = shp_frame['geometry'].buffer(neg_buffer)
+                    shp_frame['Shape_Area'] = shp_frame.area
                     shp_frame = shp_frame.to_crs({'init': 'epsg:4326'})
 
-                # hacky way of getting rid of empty geometries
-                shp_frame = shp_frame[shp_frame.Shape_Area > 9e-11]
+                # filtering out very small fields, in meters. 100 meters area looks like a good number for now
+                shp_frame = shp_frame.loc[shp_frame.Shape_Area > small_area_filter]
+                shp_frame = shp_frame[shp_frame.DN==1] # get rid of extent polygon
+                # https://gis.stackexchange.com/questions/151339/rasterize-a-shapefile-with-geopandas-or-fiona-python#151861
                 shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
+                burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform, default_value=1)
+                burned[burned < 0] = 0
+                out.write_band(1, burned) 
+        print('Done applying negbuff of {negbuff} and filtering small labels of area less than {area}'.format(negbuff=neg_buffer,area=small_area_filter))          
 
-                burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform)
-                out.write_band(1, burned)
-                
-    
-                
+    def rm_mostly_empty(scene_path, label_path):
+        '''
+        Removes a grid that is mostly (over 1/4th) empty and corrects bad no data value to 0.
+        Ignor ethe User Warning, unsure why it pops up but doesn't seem to impact the array shape
+        '''
+        usable_data_threshold = params['image_vals']['usable_thresh']
+        arr = skio.imread(scene_path)
+        arr[arr<0] = 0
+        skio.imsave(scene_path, arr)
+        pixel_count = arr.shape[0] * arr.shape[1]
+        nodata_pixel_count = (arr == 0).sum()
+        if 1-(nodata_pixel_count/pixel_count) < usable_data_threshold:
+            os.remove(scene_path)
+            os.remove(label_path)
+            print('removed scene and label, less than {}% good data'.format(usable_data_threshold))
+            
     def grid_images(params):
         """
         Grids up imagery to a variable size. Filters out imagery with too little usable data.
+        appends a random unique id to each tif and label pair, appending string 'label' to the 
+        mask.
         """
-        
-        reorder_images(params)
-        usable_data_threshold = params['image_vals']['usable_thresh']
-        label_list = sorted(next(os.walk(SOURCE_LABELS))[2])
-        img_list = sorted(next(os.walk(SOURCE_LABELS))[2])
-        
-        
-    
-    def remove_dir_folders(directory):
-        '''
-        Removes all files and sub-folders in a folder and keeps the folder.
-        '''
-    
-        folderlist = [ f for f in os.listdir(directory)]
-        for f in folderlist:
-            shutil.rmtree(os.path.join(directory,f))
+        img_list = sorted(next(os.walk(REORDER))[2])
+        label_list = sorted(next(os.walk(NEG_BUFFERED))[2])
 
-    image_list = next(os.walk(REORDERED_DIR))[2]
+        for img_name, label_name in zip(img_list, label_list):
+            img_path = os.path.join(REORDER, img_name)
+            label_path = os.path.join(NEG_BUFFERED, label_name)
+            #assign unique name to each gridded tif, keeping season suffix
+            #assigning int of same length as ZA0932324 naming convention
+
+            tile_size_x = params['image_vals']['grid_size']
+            tile_size_y = params['image_vals']['grid_size']
+            ds = gdal.Open(img_path)
+            band = ds.GetRasterBand(1)
+            xsize = band.XSize
+            ysize = band.YSize   
+
+            for i in range(0, xsize, tile_size_x):
+                for j in range(0, ysize, tile_size_y):
+                    unique_id = str(random.randint(100000000,999999999))
+                    out_path_img = os.path.join(GRIDDED_IMGS,unique_id)+ '.tif'
+                    out_path_label = os.path.join(GRIDDED_LABELS,unique_id)+ '_label.tif'
+                    com_string = "gdal_translate -of GTIFF -srcwin " + str(i)+ ", " + \
+                        str(j) + ", " + str(tile_size_x) + ", " + str(tile_size_y) + " " + \
+                        str(img_path) + " " + str(out_path_img)
+                    os.system(com_string)
+                    com_string = "gdal_translate -of GTIFF -srcwin " + str(i)+ ", " + \
+                        str(j) + ", " + str(tile_size_x) + ", " + str(tile_size_y) + " " + \
+                        str(label_path) + " " + str(out_path_label)
+                    os.system(com_string)
+                    rm_mostly_empty(out_path_img, out_path_label)
+
+    def open_labels(params):
+        negative_buffer_and_small_filter(params)
+        k = params['label_vals']['kernel']
+        if params['label_vals']['open'] == True:
+            label_list = next(os.walk(NEG_BUFFERED))[2]
+
+            for name in label_list:
+                arr = skio.imread(os.path.join(NEG_BUFFERED,name))
+                arr[arr < 0]=0
+                opened_path = os.path.join(OPENED,name)
+                kernel = np.ones((k,k))
+                arr = skim.binary_opening(arr, kernel)
+                arr=1*arr
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=UserWarning)
+                    skio.imsave(opened_path, 1*arr)
+            print('Done opening with kernel of height and width of {size}'.format(size=k))         
     
-    def move_img_to_folder(filename):
-        '''Moves a file with identifier pattern ZA0165086_MS_GS.tif to a 
-        folder path ZA0165086/image/ZA0165086_MS_GS.tif
+    def move_img_to_folder(params):
+        '''Moves a file with identifier pattern 760165086_OSGS.tif to a 
+        folder path ZA0165086/image/ZA0165086.tif
         Also creates a masks folder at ZA0165086/masks'''
         
         folder_name = os.path.join(TRAIN_DIR,filename[:9])
@@ -234,22 +286,6 @@ def preprocess():
 
     for img in image_list:
         move_img_to_folder(img)
-
-    label_list = next(os.walk(LABELS_DIR))[2]
-
-    for name in label_list:
-        arr = skio.imread(os.path.join(LABELS_DIR,name))
-        arr[arr == -1.7e+308]=0
-        label_name = name[0:15]+'.tif'
-        opened_path = os.path.join(OPENED_LABELS_DIR,name)
-        kernel = np.ones((5,5))
-        arr = skim.binary_opening(arr, kernel)
-        arr=1*arr
-        assert arr.ndim == 2
-        assert arr.shape == (512, 512)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=UserWarning)
-            skio.imsave(opened_path, 1*arr)
 
     label_list = next(os.walk(OPENED_LABELS_DIR))[2]
     # save connected components and give each a number at end of id
