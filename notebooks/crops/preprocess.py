@@ -271,91 +271,78 @@ def preprocess():
     def move_img_to_folder(params):
         '''Moves a file with identifier pattern 760165086_OSGS.tif to a 
         folder path ZA0165086/image/ZA0165086.tif
-        Also creates a masks folder at ZA0165086/masks'''
-        
-        folder_name = os.path.join(TRAIN_DIR,filename[:9])
-        if os.path.isdir(folder_name):
-            shutil.rmtree(folder_name)
-        os.mkdir(folder_name)
-        new_path = os.path.join(folder_name, 'image')
-        mask_path = os.path.join(folder_name, 'masks')
-        os.mkdir(new_path)
-        file_path = os.path.join(REORDERED_DIR,filename)
-        os.rename(file_path, os.path.join(new_path, filename))
-        os.mkdir(mask_path)
+        Also creates a mask folder at ZA0165086/masks'''
+        image_list = os.listdir(GRIDDED_IMGS)
+        for img in image_list:
 
-    for img in image_list:
-        move_img_to_folder(img)
+            folder_name = os.path.join(TRAIN,img[:9])
+            os.mkdir(folder_name)
+            new_path = os.path.join(folder_name, 'image')
+            mask_path = os.path.join(folder_name, 'mask')
+            os.mkdir(new_path)
+            file_path = os.path.join(GRIDDED_IMGS,img)
+            os.rename(file_path, os.path.join(new_path, img[:9]+'.tif'))
+            os.mkdir(mask_path)
 
-    label_list = next(os.walk(OPENED_LABELS_DIR))[2]
-    # save connected components and give each a number at end of id
-    for name in label_list:
-        arr = skio.imread(os.path.join(OPENED_LABELS_DIR,name))
-        blob_labels = measure.label(arr, background=0)
-        blob_vals = np.unique(blob_labels)
-        for blob_val in blob_vals[blob_vals!=0]:
-            labels_copy = blob_labels.copy()
-            assert labels_copy.shape == (512, 512)
-            labels_copy[blob_labels!=blob_val] = 0
-            labels_copy[blob_labels==blob_val] = 1
-            label_name = name[0:15]+str(blob_val)+'.tif'
-            label_path = os.path.join(CONNECTED_COMP_DIR,label_name)
-            assert labels_copy.ndim == 2
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=UserWarning)
-                skio.imsave(label_path, labels_copy)
+    def connected_comp(params):
+        """
+        Extracts individual instances into their own tif files. Saves them
+        in each folder ID in train folder. If an image has no instances,
+        saves it with a empty mask.
+        """
+        label_list = next(os.walk(OPENED))[2]
+        # save connected components and give each a number at end of id
+        for name in label_list:
+            arr = skio.imread(os.path.join(OPENED,name))
+            blob_labels = measure.label(arr, background=0)
+            blob_vals = np.unique(blob_labels)
+            #for imgs with no isntances, create empty mask
+            if len(blob_vals)==1:
+                img_folder = os.path.join(TRAIN,name[:9], 'image')
+                img_name = os.listdir(img_folder)[0]
+                img_path = os.path.join(img_folder, img_name)
+                arr = skio.imread(img_path)
+                mask = np.zeros_like(arr[:,:,0])
+                mask_folder = os.path.join(TRAIN,name[:9], 'mask')
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=UserWarning)
+                    label_stump = os.path.splitext(os.path.basename(name))[0]
+                    skio.imsave(os.path.join(mask_folder,  label_stump + '_0.tif'),mask)
+            # only run connected comp if there is at least one instance
+            for blob_val in blob_vals[blob_vals!=0]:
+                labels_copy = blob_labels.copy()
+                labels_copy[blob_labels!=blob_val] = 0
+                labels_copy[blob_labels==blob_val] = 1
 
-    def move_mask_to_folder(filename):
-        '''Moves a mask with identifier pattern ZA0165086_label_1.tif to a 
-        folder path ZA0165086/mask/ZA0165086_label_1.tif. Need to run 
-        connected components first.
-        '''
-        if os.path.isdir(os.path.join(TRAIN_DIR,filename[:9])):
-            folder_path = os.path.join(TRAIN_DIR,filename[:9])
-            mask_path = os.path.join(folder_path, 'masks')
-            file_path = os.path.join(CONNECTED_COMP_DIR,filename)
-            os.rename(file_path, os.path.join(mask_path, filename))
+                label_stump = os.path.splitext(os.path.basename(name))[0]
+                label_name = label_stump+'_'+str(blob_val)+'.tif'
+                mask_path = os.path.join(TRAIN,name[:9], 'mask')
+                label_path = os.path.join(mask_path,label_name)
+                assert labels_copy.ndim == 2
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=UserWarning)
+                    skio.imsave(label_path, labels_copy)
 
-    mask_list = next(os.walk(CONNECTED_COMP_DIR))[2]
-    for mask in mask_list:
-        move_mask_to_folder(mask)
 
-    id_list = next(os.walk(TRAIN_DIR))[1]
-    
-    for fid in id_list:
-        mask_folder = os.path.join(DATASET_DIR, 'train',fid, 'masks')
-        im_folder = os.path.join(DATASET_DIR, 'train',fid, 'image')
-        if not os.listdir(mask_folder):
-            im_path = os.path.join(im_folder, os.listdir(im_folder)[0])
-            arr = skio.imread(im_path)
-            assert arr.shape == (512, 512, 3)
-            mask = np.zeros_like(arr[:,:,0])
-            assert mask.shape == (512, 512)
-            assert mask.ndim == 2
-            # ignores warning about low contrast image
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=UserWarning)
-                skio.imsave(os.path.join(mask_folder, fid + '_label_0.tif'),mask)
-
-    def train_test_split(train_dir, test_dir, kprop):
+    def train_test_split(params):
         """Takes a sample of folder ids and copies them to a test directory
         from a directory with all folder ids. Each sample folder contains an 
         images and corresponding masks folder."""
 
-        remove_dir_folders(test_dir)
-        sample_list = next(os.walk(train_dir))[1]
-        k = round(kprop*len(sample_list))
+        k = params['image_vals']['split']
+        sample_list = next(os.walk(TRAIN))[1]
+        k = round(k*len(sample_list))
         test_list = random.sample(sample_list,k)
         for test_sample in test_list:
-            shutil.copytree(os.path.join(train_dir,test_sample),os.path.join(test_dir,test_sample))
-        train_list = list(set(next(os.walk(train_dir))[1]) - set(test_list))
+            shutil.copytree(os.path.join(TRAIN,test_sample),os.path.join(TEST,test_sample))
+        train_list = list(set(next(os.walk(TRAIN))[1]) - set(TEST))
         train_df = pd.DataFrame({'train': train_list})
         test_df = pd.DataFrame({'test': test_list})
-        train_df.to_csv(os.path.join(RESULTS_DIR, 'train_ids.csv'))
-        test_df.to_csv(os.path.join(RESULTS_DIR, 'test_ids.csv'))
+        train_df.to_csv(os.path.join(RESULTS, 'train_ids.csv'))
+        test_df.to_csv(os.path.join(RESULTS, 'test_ids.csv'))
         
-    train_test_split(TRAIN_DIR, TEST_DIR, .1)
-    print('preprocessing complete, ready to run model.')
+    
+        print('preprocessing complete, ready to run model.')
 
 def get_arr_channel_mean(channel):
     means = []

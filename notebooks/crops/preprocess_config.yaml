@@ -27,6 +27,7 @@ bands_to_include:
 image_vals:
     grid_size: 512 
     usable_thresh: .25 #image must have at least 25% of values that are non zero from either cloud masking or gridding
+    split: .1 # the proportion of samples that will be used for testing
 label_vals:
     neg_buffer: -.5 # in meters, applied on vectors before they are rasterized to reduce spurious instance overlap
     small_area_filter: 100 # in area meters, removes fields with area less than 100 meters from labels 
