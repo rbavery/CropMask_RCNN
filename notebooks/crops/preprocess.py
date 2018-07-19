@@ -9,20 +9,22 @@ import warnings
 import pandas as pd
 import numpy as np
 import pathlib
-from difflib import SequenceMatcher
 import yaml
-
-import gdal # for gridding
+import geopandas as gpd
+from rasterio import features, coords
+import rasterio
+from shapely.geometry import shape
+import gdal
 
 random.seed(4)
 
 def preprocess():
     
     def parse_yaml(input_file):
-    """Parse yaml file of configuration parameters."""
-    with open(input_file, 'r') as yaml_file:
-        params = yaml.load(yaml_file)
-    return params
+        """Parse yaml file of configuration parameters."""
+        with open(input_file, 'r') as yaml_file:
+            params = yaml.load(yaml_file)
+        return params
 
     params = parse_yaml('preprocess_config.yaml') 
 
@@ -48,9 +50,6 @@ def preprocess():
 
     OPENED = os.path.join(
         DATASET, params['dirs']['opened'])
-
-    INSTANCES = os.path.join(
-        DATASET, params['dirs']['instances'])
     
     NEG_BUFFERED = os.path.join(
         DATASET, params['dirs']['neg_buffered_labels'])
@@ -63,7 +62,7 @@ def preprocess():
     SOURCE_LABELS = os.path.join(
         ROOT, params['dirs']['source_labels'])
 
-    dirs = [DATASET, REORDER, TRAIN, TEST, GRIDDED_IMGS, GRIDDED_LABELS, OPENED, INSTANCES, RESULTS]
+    dirs = [DATASET, REORDER, TRAIN, TEST, GRIDDED_IMGS, GRIDDED_LABELS, OPENED, NEG_BUFFERED, RESULTS]
 
     # Make directory and subdirectories
     for d in dirs:
@@ -89,9 +88,9 @@ def preprocess():
         return band_list
     
     def reorder_images(params):
-    """Load the os, gs, or both images and subset bands. Growing
-    Season is stacked first before OS if both true.
-    """
+        """Load the os, gs, or both images and subset bands. Growing
+        Season is stacked first before OS if both true.
+        """
         file_ids_all = next(os.walk(SOURCE_IMGS))[2]
         band_indices = yaml_to_band_index(params)
         image_ids_gs = sorted([image_id for image_id in file_ids_all \
@@ -103,16 +102,15 @@ def preprocess():
             for img_path in image_ids_gs:
                 gs_image = skio.imread(os.path.join(SOURCE_IMGS, img_path))
                 gs_image = gs_image[:,:,band_indices]
-                skio.imsave(gs_image_path, gs_image, plugin='tifffile')
+                skio.imsave(img_path, gs_image, plugin='tifffile')
 
         elif params['seasons']['OS'] and params['seasons']['GS'] == False:
             for img_path in image_ids_os:
                 os_image = skio.imread(os.path.join(SOURCE_IMGS, img_path))
                 os_image = gs_image[:,:,band_indices]
-                skio.imsave(os_image_path, os_image, plugin='tifffile')
+                skio.imsave(img_path, os_image, plugin='tifffile')
         else:
             for gs_path, os_path in zip(image_ids_gs, image_ids_os):
-                print(gs_path, os_path)
                 gs_image = skio.imread(os.path.join(SOURCE_IMGS, gs_path))
                 os_image = skio.imread(os.path.join(SOURCE_IMGS, os_path))
                 gsos_image = np.dstack([gs_image[:,:,band_indices], os_image[:,:,band_indices]])
@@ -251,13 +249,14 @@ def preprocess():
                     rm_mostly_empty(out_path_img, out_path_label)
 
     def open_labels(params):
-        negative_buffer_and_small_filter(params)
+        """
+        Opens labels with kernel as defined in config.
+        """
         k = params['label_vals']['kernel']
+        label_list = next(os.walk(GRIDDED_LABELS))[2]
         if params['label_vals']['open'] == True:
-            label_list = next(os.walk(NEG_BUFFERED))[2]
-
             for name in label_list:
-                arr = skio.imread(os.path.join(NEG_BUFFERED,name))
+                arr = skio.imread(os.path.join(GRIDDED_LABELS,name))
                 arr[arr < 0]=0
                 opened_path = os.path.join(OPENED,name)
                 kernel = np.ones((k,k))
@@ -266,7 +265,17 @@ def preprocess():
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=UserWarning)
                     skio.imsave(opened_path, 1*arr)
-            print('Done opening with kernel of height and width of {size}'.format(size=k))         
+
+            print('Done opening with kernel of h and w {size}'.format(size=k))
+
+        else:
+            for name in label_list:
+                arr = skio.imread(os.path.join(GRIDDED_LABELS,name))
+                arr[arr < 0]=0
+                opened_path = os.path.join(OPENED,name)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=UserWarning)
+                    skio.imsave(opened_path, 1*arr)    
     
     def move_img_to_folder(params):
         '''Moves a file with identifier pattern 760165086_OSGS.tif to a 
@@ -340,16 +349,33 @@ def preprocess():
         test_df = pd.DataFrame({'test': test_list})
         train_df.to_csv(os.path.join(RESULTS, 'train_ids.csv'))
         test_df.to_csv(os.path.join(RESULTS, 'test_ids.csv'))
-        
-    
-        print('preprocessing complete, ready to run model.')
 
-def get_arr_channel_mean(channel):
-    means = []
-    for i, fid in enumerate(id_list):
-        im_folder = os.path.join('train',fid, 'image')
-        im_path = os.path.join(im_folder, os.listdir(im_folder)[0])
-        arr = skio.imread(im_path)
-        arr[arr==-1.7e+308]=np.nan
-        means.append(np.nanmean(arr[:,:,channel]))
-    return np.mean(means)
+    def get_arr_channel_mean(channel):
+        """
+        Calculate the mean of a given channel across all training samples.
+        """
+        
+        means = []
+        train_list = list(set(next(os.walk(TRAIN))[1]) - set(TEST))
+        for i, fid in enumerate(train_list):
+            im_folder = os.path.join(TRAIN,fid, 'image')
+            im_path = os.path.join(im_folder, os.listdir(im_folder)[0])
+            arr = skio.imread(im_path)
+            arr[arr==-1.7e+308]=np.nan
+            means.append(np.nanmean(arr[:,:,channel]))
+        print(np.mean(means))
+    
+    
+    reorder_images(params)
+    negative_buffer_and_small_filter(params)
+    grid_images(params)
+    open_labels(params)
+    move_img_to_folder(params)
+    connected_comp(params)
+    train_test_split(params)
+    print('preprocessing complete, ready to run model.')
+    
+    print('channel means, put these in model_configs.py subclass')
+    band_indices = yaml_to_band_index(params)
+    for i, v in enumerate(band_indices):
+        get_arr_channel_mean(i)

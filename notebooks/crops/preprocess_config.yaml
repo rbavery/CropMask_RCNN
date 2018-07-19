@@ -1,6 +1,6 @@
 dirs:
     root: /home/rave/tana-crunch/waves/cropmask/data
-    dataset: test
+    dataset: test2
     reorder: reorder
     train: train
     test: test
