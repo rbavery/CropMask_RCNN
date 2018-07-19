@@ -31,5 +31,6 @@ image_vals:
 label_vals:
     neg_buffer: -.5 # in meters, applied on vectors before they are rasterized to reduce spurious instance overlap
     small_area_filter: 100 # in area meters, removes fields with area less than 100 meters from labels 
+    big_area_filter: 141317 # in area meters, remove fields that are larger than this value (the approx area of smallest wv2 cente r pivot)
     open: false # whether or not to apply opening. Should not be necessary if neg buffer and small_area_filter is successfull
     kernel: 5 # square kenrel size for erion then dilation of raterized instance labels to reduce overlap

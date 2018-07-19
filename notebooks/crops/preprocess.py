@@ -135,6 +135,7 @@ def preprocess():
         """
         neg_buffer = float(params['label_vals']['neg_buffer'])
         small_area_filter = float(params['label_vals']['small_area_filter'])
+        big_area_filter = float(params['label_vals']['big_area_filter'])
         # This is a helper  used with sorted for a list of strings by specific indices in 
         # each string. Was used for a long path that ended with a file name
         # Not needed here but may be with different source imagery and labels
@@ -185,8 +186,9 @@ def preprocess():
                     shp_frame['Shape_Area'] = shp_frame.area
                     shp_frame = shp_frame.to_crs({'init': 'epsg:4326'})
 
-                # filtering out very small fields, in meters. 100 meters area looks like a good number for now
+                # filtering out very small fields, in meters. 100 square meters area looks like a good number for now
                 shp_frame = shp_frame.loc[shp_frame.Shape_Area > small_area_filter]
+                shp_frame = shp_frame.loc[shp_frame.Shape_Area < big_area_filter]
                 shp_frame = shp_frame[shp_frame.DN==1] # get rid of extent polygon
                 # https://gis.stackexchange.com/questions/151339/rasterize-a-shapefile-with-geopandas-or-fiona-python#151861
                 shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
