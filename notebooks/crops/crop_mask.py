@@ -10,16 +10,16 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
        the command line as such:
 
     # Train a new model starting from ImageNet weights
-    python3 crop_mask.py train --dataset=data/raw/wv2 --subset=train --weights=imagenet
+    python3 crop_mask.py train --dataset=data/wv2 --subset=train --weights=imagenet
 
     # Train a new model starting from specific weights file
-    python3 crop_mask.py train --dataset=data/raw/wv2 --subset=train --weights=/path/to/weights.h5
+    python3 crop_mask.py train --dataset=data/wv2 --subset=train --weights=/path/to/weights.h5
 
     # Resume training a model that you had trained earlier
-    python3 crop_mask.py train --dataset=data/raw/wv2 --subset=train --weights=last
+    python3 crop_mask.py train --dataset=data/wv2 --subset=train --weights=last
 
     # Generate submission file
-    python3 crop_mask.py detect --dataset=data/raw/wv2 --subset=train --weights=<last or /path/to/weights.h5>
+    python3 crop_mask.py detect --dataset=data/wv2 --subset=train --weights=<last or /path/to/weights.h5>
 """
 
 
@@ -44,8 +44,8 @@ import os
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
 sys.path.append(ROOT_DIR)  # To find local version of the library
-import wv2_preprocess
-import wv2_config
+import preprocess
+import model_configs
 import datasets
 import datetime
 from imgaug import augmenters as iaa
@@ -68,12 +68,12 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 def train(model, dataset_dir, subset):
     """Train the model."""
     # Training dataset.
-    dataset_train = dataset.WV2Dataset()
+    dataset_train = datasets.WV2Dataset()
     dataset_train.load_imagery(dataset_dir, "train", image_source='wv2', class_name='agriculture')
     dataset_train.prepare()
 
     # Validation dataset
-    dataset_val = dataset.WV2Dataset()
+    dataset_val = datasets.WV2Dataset()
     dataset_val.load_imagery(dataset_dir, "test", image_source='wv2', class_name='agriculture')
     dataset_val.prepare()
 
@@ -171,7 +171,7 @@ def detect(model, dataset_dir, subset):
     os.makedirs(submit_dir)
 
     # Read dataset
-    dataset = wv2_dataset.WV2Dataset(3)
+    dataset = datasets.WV2Dataset(3)
     dataset.load_imagery(dataset_dir, subset, image_source='wv2', class_name='agriculture')
     dataset.prepare()
     # Load over images
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.command == "preprocess":
-        wv2_preprocess.preprocess()
+        preprocess.preprocess()
 
     else:
         # Validate arguments
@@ -247,9 +247,9 @@ if __name__ == '__main__':
 
         # Configurations
         if args.command == "train":
-            config = wv2_config.WV2Config(3)
+            config = model_configs.WV2Config(3)
         else:
-            config = wv2_config.WV2InferenceConfig(3)
+            config = model_configs.WV2InferenceConfig(3)
         config.display()
 
         # Create model

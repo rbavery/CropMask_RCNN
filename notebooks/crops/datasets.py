@@ -3,12 +3,12 @@ import os
 import pandas as pd
 import skimage.io as skio
 import numpy as np
-
+import preprocess as pp
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
 # Results directory
 # Save submission files and test/train split csvs here
-RESULTS_DIR = os.path.join(ROOT_DIR, "results/wv2/") 
+RESULTS_DIR = pp.RESULTS
 
 ############################################################
 #  Dataset
@@ -49,7 +49,6 @@ class WV2Dataset(utils.Dataset):
         train_list = list(train_ids['train'])
         test_ids = pd.read_csv(os.path.join(RESULTS_DIR, 'test_ids.csv'))
         test_list = list(test_ids['test'])
-        
         if subset == "test":
             image_ids = test_list
         else:
@@ -60,7 +59,7 @@ class WV2Dataset(utils.Dataset):
             self.add_image(
                 image_source,
                 image_id=image_id,
-                path=os.path.join(dataset_dir, str(image_id), "image/{}.tif".format(str(image_id)+'_GS_RGB')))
+                path=os.path.join(dataset_dir, str(image_id), "image/{}.tif".format(str(image_id))))
     
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -71,7 +70,7 @@ class WV2Dataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         # Get mask directory from image path
-        mask_dir = os.path.join(os.path.dirname(os.path.dirname(info['path'])), "masks")
+        mask_dir = os.path.join(os.path.dirname(os.path.dirname(info['path'])), "mask")
 
         # Read mask files from .png image
         mask = []

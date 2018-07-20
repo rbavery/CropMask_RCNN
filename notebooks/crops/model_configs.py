@@ -32,20 +32,20 @@ class WV2Config(Config):
         self.IMAGE_META_SIZE = 1 + 3 + 3 + 4 + 1 + self.NUM_CLASSES
         self.CHANNELS_NUM = N
     
-    LEARNING_RATE = .0001 
+    LEARNING_RATE = .001 
     
     # Image mean (RGBN RGBN) from WV2_MRCNN_PRE.ipynb
     # filling with N values, need to compute mean of each channel
     # values are for gridded wv2 no partial grids
-    MEAN_PIXEL = np.array([200.05, 274.7, 164.04])
+    MEAN_PIXEL = np.array([222.42, 305.31, 181.74])
     
     # Give the configuration a recognizable name
-    NAME = "wv2-512-cp-labels-allgrowing"
+    NAME = "wv2-512-small-labels-allgrowing-fromcoco-opening"
 
     # Batch size is 4 (GPUs * images/GPU).
     # New parralel_model.py allows for multi-gpu
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 4
+    IMAGES_PER_GPU = 3
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # background + ag
@@ -62,7 +62,7 @@ class WV2Config(Config):
     # Use smaller anchors because our image and objects are small.
     # Setting Large upper scale since some fields take up nearly 
     # whole image
-    RPN_ANCHOR_SCALES = (25, 75, 125, 250, 350)  # anchor side in pixels, determined using inspect_crop_data.ipynb
+    RPN_ANCHOR_SCALES = (25, 75, 125, 200, 350)  # anchor side in pixels, determined using inspect_crop_data.ipynb
 
     # Reduce training ROIs per image because the images are small and have
     # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
