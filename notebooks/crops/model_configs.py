@@ -40,7 +40,7 @@ class WV2Config(Config):
     MEAN_PIXEL = np.array([222.42, 308.74, 184.92])
     
     # Give the configuration a recognizable name
-    NAME = "wv2-1024-center-pivots-allgrowing-fromcoco-changed_scales_and_learnrate"
+    NAME = "wv2-1024-center-pivots-fixed-split"
 
     # Batch size is 4 (GPUs * images/GPU).
     # New parralel_model.py allows for multi-gpu
@@ -66,13 +66,13 @@ class WV2Config(Config):
     TRAIN_ROIS_PER_IMAGE = 100
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 500
+    STEPS_PER_EPOCH = 100
     
     #reduces the max number of field instances
     MAX_GT_INSTANCES = 7 # determined using inspect_crop_data.ipynb
 
     # use small validation steps since the epoch is small
-    VALIDATION_STEPS = 50
+    VALIDATION_STEPS = 100
     
     # Backbone network architecture
     # Supported values are: resnet50, resnet101.
