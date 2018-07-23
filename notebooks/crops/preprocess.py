@@ -177,15 +177,21 @@ def negative_buffer_and_small_filter(params):
                 shp_frame['Shape_Area'] = shp_frame.area
                 shp_frame = shp_frame.to_crs({'init': 'epsg:4326'})
 
-            # filtering out very small fields, in meters. 100 square meters area looks like a good number for now
-            shp_frame = shp_frame.loc[shp_frame.Shape_Area > small_area_filter]
-            shp_frame = shp_frame.loc[shp_frame.Shape_Area < big_area_filter]
-            shp_frame = shp_frame[shp_frame.DN==1] # get rid of extent polygon
-            # https://gis.stackexchange.com/questions/151339/rasterize-a-shapefile-with-geopandas-or-fiona-python#151861
-            shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
-            burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform, default_value=1)
-            burned[burned < 0] = 0
-            out.write_band(1, burned) 
+            if len(shp_frame) == 1: # added for center pivot case, where entire wv2 scenes have no center pivots and need empty masks
+                shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
+                burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform, default_value=1)
+                burned[burned < 0] = 0
+                out.write_band(1, burned)           
+                
+            else: # added for center pivot case, where entire wv2 scenes have no center pivots and need empty masks
+                shp_frame = shp_frame.loc[shp_frame.Shape_Area > small_area_filter]
+                shp_frame = shp_frame.loc[shp_frame.Shape_Area < big_area_filter]
+                shp_frame = shp_frame[shp_frame.DN==1] # get rid of extent polygon
+                # https://gis.stackexchange.com/questions/151339/rasterize-a-shapefile-with-geopandas-or-fiona-python#151861
+                shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
+                burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform, default_value=1)
+                burned[burned < 0] = 0
+                out.write_band(1, burned) 
     print('Done applying negbuff of {negbuff} and filtering small labels of area less than {area}'.format(negbuff=neg_buffer,area=small_area_filter))          
 
 def rm_mostly_empty(scene_path, label_path):
@@ -337,7 +343,7 @@ def train_test_split(params):
     test_list = random.sample(sample_list,k)
     for test_sample in test_list:
         shutil.copytree(os.path.join(TRAIN,test_sample),os.path.join(TEST,test_sample))
-    train_list = list(set(next(os.walk(TRAIN))[1]) - set(TEST))
+    train_list = list(set(next(os.walk(TRAIN))[1]) - set(next(os.walk(TEST))[1]))
     train_df = pd.DataFrame({'train': train_list})
     test_df = pd.DataFrame({'test': test_list})
     train_df.to_csv(os.path.join(RESULTS, 'train_ids.csv'))
