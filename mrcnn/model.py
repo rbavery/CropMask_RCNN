@@ -2716,7 +2716,7 @@ class MaskRCNN():
         # TODO: can this be optimized to avoid duplicating the anchors?
         anchors = np.broadcast_to(anchors, (self.config.BATCH_SIZE,) + anchors.shape)
         model_in = [molded_images, image_metas, anchors]
-
+        
         # Run inference
         if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
             model_in.append(0.)
