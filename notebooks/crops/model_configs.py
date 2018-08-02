@@ -45,9 +45,9 @@ class WV2Config(Config):
     NAME = "wv2-1024-smallholder"
 
     # Batch size is 4 (GPUs * images/GPU).
-    # New parralel_model.py allows for multi-gpu
-    GPU_COUNT = 2
-    IMAGES_PER_GPU = 4
+    # Keras 2.1.6 works for multi-gpu but takes longer than single GPU currently
+    GPU_COUNT = 1
+    IMAGES_PER_GPU = 8
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # background + ag
