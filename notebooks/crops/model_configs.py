@@ -10,7 +10,9 @@ class WV2Config(Config):
      Overrides values specific to WV2.
     
     Descriptive documentation for each attribute is at
-    https://github.com/matterport/Mask_RCNN/blob/master/mrcnn/config.py"""
+    https://github.com/matterport/Mask_RCNN/blob/master/mrcnn/config.py
+    
+    There are many more hyperparameters to edit than are set in this subclass"""
     
     def __init__(self, N):
         """Set values of computed attributes. Channel dimension is overriden, 
@@ -32,20 +34,20 @@ class WV2Config(Config):
         self.IMAGE_META_SIZE = 1 + 3 + 3 + 4 + 1 + self.NUM_CLASSES
         self.CHANNELS_NUM = N
     
-    LEARNING_RATE = .001 
+    LEARNING_RATE = .00005 
     
     # Image mean (RGBN RGBN) from WV2_MRCNN_PRE.ipynb
     # filling with N values, need to compute mean of each channel
     # values are for gridded wv2 no partial grids
-    MEAN_PIXEL = np.array([222.42, 305.31, 181.74])
+    MEAN_PIXEL = np.array([221.7, 304.46, 181.91])
     
     # Give the configuration a recognizable name
-    NAME = "wv2-512-small-labels-allgrowing-fromcoco-opening"
+    NAME = "wv2-1024-smallholder"
 
     # Batch size is 4 (GPUs * images/GPU).
-    # New parralel_model.py allows for multi-gpu
+    # Keras 2.1.6 works for multi-gpu but takes longer than single GPU currently
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 3
+    IMAGES_PER_GPU = 8
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # background + ag
@@ -56,23 +58,20 @@ class WV2Config(Config):
     #     "to avoid fractions when downscaling and upscaling."
     #    "For example, use 256, 320, 384, 448, 512, ... etc. "
     IMAGE_RESIZE_MODE = "square"
-    IMAGE_MIN_DIM = 512
-    IMAGE_MAX_DIM = 512
+    IMAGE_MIN_DIM = 256
+    IMAGE_MAX_DIM = 256
 
-    # Use smaller anchors because our image and objects are small.
-    # Setting Large upper scale since some fields take up nearly 
-    # whole image
-    RPN_ANCHOR_SCALES = (25, 75, 125, 200, 350)  # anchor side in pixels, determined using inspect_crop_data.ipynb
+    # anchor side in pixels, determined using inspect_crop_data.ipynb. can specify more or less scales
+    RPN_ANCHOR_SCALES = (20, 60, 100, 140)
 
-    # Reduce training ROIs per image because the images are small and have
-    # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
+    # Aim to allow ROI sampling to pick 33% positive ROIs. This is always 33% in inspect_data nb, unsure if that is accurate.
     TRAIN_ROIS_PER_IMAGE = 100
 
-    # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 500
+    # Unsure what best step size is but nucleus used 100. Doubling because smallholder is more complex
+    STEPS_PER_EPOCH = 200
     
     #reduces the max number of field instances
-    MAX_GT_INSTANCES = 63 # determined using inspect_crop_data.ipynb
+    MAX_GT_INSTANCES = 29 # determined using inspect_crop_data.ipynb
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 100
@@ -88,6 +87,16 @@ class WV2Config(Config):
     # memory load. Recommended when using high-resolution images.
     USE_MINI_MASK = False
     MINI_MASK_SHAPE = (56, 56)  # (height, width) of the mini-mask
+    
+    # Loss weights for more precise optimization. It has been suggested that mrcnn_mask_loss should be weighted higher
+    # Can be used for R-CNN training setup.
+    LOSS_WEIGHTS = {
+        "rpn_class_loss": 1.,
+        "rpn_bbox_loss": 1.,
+        "mrcnn_class_loss": 1.,
+        "mrcnn_bbox_loss": 1.,
+        "mrcnn_mask_loss": 1.
+    }
     
 
 

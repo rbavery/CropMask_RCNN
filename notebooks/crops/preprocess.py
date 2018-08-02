@@ -124,6 +124,7 @@ def negative_buffer_and_small_filter(params):
 
     Returns rasterized labels that are ready to be gridded
     """
+    class_int = params['label_vals']['class']
     neg_buffer = float(params['label_vals']['neg_buffer'])
     small_area_filter = float(params['label_vals']['small_area_filter'])
     big_area_filter = float(params['label_vals']['big_area_filter'])
@@ -142,6 +143,7 @@ def negative_buffer_and_small_filter(params):
     shp_list = sorted(labels)
     # need to use Source imagery for geotransform data for rasterized shapes, didn't preserve when save imgs to reorder
     scenes = os.listdir(SOURCE_IMGS)
+    #hard coded season because it will take more tinkering to have the model and preprocessing work with multichannel
     scenes = [scene for scene in scenes if 'GS' in scene]
     img_list = []
     for name in scenes:
@@ -152,6 +154,8 @@ def negative_buffer_and_small_filter(params):
 
     for shp_path, img_path in zip(shp_list, img_list):
         shp_frame = gpd.read_file(shp_path)
+        # keeps the class of interest if it is there and the polygon of raster extent
+        shp_frame = shp_frame[(shp_frame['class'] == class_int) | (shp_frame['DN'] == 1)]
         with rasterio.open(img_path) as rast:
             meta = rast.meta.copy()
             meta.update(compress="lzw")
@@ -165,6 +169,7 @@ def negative_buffer_and_small_filter(params):
             shp_frame.loc[1:,'DN'] = 1
             maxx_bound = shp_frame.bounds.maxx.max()
             minx_bound = shp_frame.bounds.minx.min()
+            #need to project to correct utm before buffering in units of meters
             if maxx_bound >= 30 and minx_bound>= 30:
                 shp_frame = shp_frame.to_crs({'init': 'epsg:32736'})
                 shp_frame['geometry'] = shp_frame['geometry'].buffer(neg_buffer)
@@ -177,12 +182,12 @@ def negative_buffer_and_small_filter(params):
                 shp_frame['Shape_Area'] = shp_frame.area
                 shp_frame = shp_frame.to_crs({'init': 'epsg:4326'})
 
-            if len(shp_frame) == 1: # added for center pivot case, where entire wv2 scenes have no center pivots and need empty masks
+            if len(shp_frame) == 1: # added for case, where entire wv2 scenes have no foreground class and need empty masks
                 shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
                 burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform, default_value=1)
                 burned[burned < 0] = 0
-                out.write_band(1, burned)           
-                
+                out.write_band(1, burned)
+
             else: # added for center pivot case, where entire wv2 scenes have no center pivots and need empty masks
                 shp_frame = shp_frame.loc[shp_frame.Shape_Area > small_area_filter]
                 shp_frame = shp_frame.loc[shp_frame.Shape_Area < big_area_filter]
@@ -191,8 +196,8 @@ def negative_buffer_and_small_filter(params):
                 shapes = ((geom,value) for geom, value in zip(shp_frame.geometry, shp_frame.DN))
                 burned = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=out.transform, default_value=1)
                 burned[burned < 0] = 0
-                out.write_band(1, burned) 
-    print('Done applying negbuff of {negbuff} and filtering small labels of area less than {area}'.format(negbuff=neg_buffer,area=small_area_filter))          
+                out.write_band(1, burned)
+    print('Done applying negbuff of {negbuff} and filtering small labels of area less than {area}'.format(negbuff=neg_buffer,area=small_area_filter))  
 
 def rm_mostly_empty(scene_path, label_path):
     '''
