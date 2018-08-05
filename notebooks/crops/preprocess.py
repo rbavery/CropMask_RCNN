@@ -16,7 +16,7 @@ import rasterio
 from shapely.geometry import shape
 import gdal
 
-random.seed(4)
+random.seed(1)
     
 def parse_yaml(input_file):
     """Parse yaml file of configuration parameters."""

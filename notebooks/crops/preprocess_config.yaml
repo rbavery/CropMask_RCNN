@@ -1,6 +1,6 @@
 dirs:
     root: /home/rave/tana-crunch/waves/cropmask/data
-    dataset: smallholder # rename this based on the imagery and labels
+    dataset: wv2-1024-cp # rename this based on the imagery and labels
     reorder: reorder
     train: train
     test: test
@@ -24,13 +24,13 @@ bands_to_include:
     - near_IR1: false
     - near_IR2: false
 image_vals:
-    grid_size: 256 
+    grid_size: 1024 
     usable_thresh: .25 #image must have at least 25% of values that are non zero from either cloud masking or gridding
-    split: .1 # the proportion of samples that will be used for testing
+    split: .15 # the proportion of samples that will be used for testing
 label_vals:
-    class: 1 # this is the integer associated with the particular class you would like to segment. 1: smallholder, 2: large ag, 3:center pivots for the wv2 datasets
+    class: 3 # this is the integer associated with the particular class you would like to segment. 1: smallholder, 2: large ag, 3:center pivots for the wv2 datasets
     neg_buffer: -.5 # in meters, applied on vectors before they are rasterized to reduce spurious instance overlap
     small_area_filter: 100 # in area meters, removes fields with area less than 100 meters from labels 
-    big_area_filter: 100000000000000 # in area meters, remove fields that are larger than this value (the approx area of smallest wv2 cente r pivot)
+    big_area_filter: 100000000000000 # in area meters, remove fields that are larger than this value
     open: false # whether or not to apply opening. Necessary due to small partial fields after gridding
-    kernel: 5 # square kenrel size for erion then dilation of raterized instance labels to reduce overlap
+    kernel: 5 # square kernel size for erosion then dilation of raterized instance labels to reduce overlap

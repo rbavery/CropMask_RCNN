@@ -39,15 +39,15 @@ class WV2Config(Config):
     # Image mean (RGBN RGBN) from WV2_MRCNN_PRE.ipynb
     # filling with N values, need to compute mean of each channel
     # values are for gridded wv2 no partial grids
-    MEAN_PIXEL = np.array([221.7, 304.46, 181.91])
+    MEAN_PIXEL = np.array([225.25, 308.74, 184.93])
     
     # Give the configuration a recognizable name
-    NAME = "wv2-1024-smallholder"
+    NAME = "wv2-1024-cp"
 
     # Batch size is 4 (GPUs * images/GPU).
     # Keras 2.1.6 works for multi-gpu but takes longer than single GPU currently
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 8
+    IMAGES_PER_GPU = 2
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # background + ag
@@ -58,20 +58,22 @@ class WV2Config(Config):
     #     "to avoid fractions when downscaling and upscaling."
     #    "For example, use 256, 320, 384, 448, 512, ... etc. "
     IMAGE_RESIZE_MODE = "square"
-    IMAGE_MIN_DIM = 256
-    IMAGE_MAX_DIM = 256
+    IMAGE_MIN_DIM = 1024
+    IMAGE_MAX_DIM = 1024
 
     # anchor side in pixels, determined using inspect_crop_data.ipynb. can specify more or less scales
-    RPN_ANCHOR_SCALES = (20, 60, 100, 140)
+    RPN_ANCHOR_SCALES = (100, 150, 250, 375) # for cp
+    # RPN_ANCHOR_SCALES = (20, 60, 100, 140) # for smallholder
 
     # Aim to allow ROI sampling to pick 33% positive ROIs. This is always 33% in inspect_data nb, unsure if that is accurate.
-    TRAIN_ROIS_PER_IMAGE = 100
+    TRAIN_ROIS_PER_IMAGE = 300
 
     # Unsure what best step size is but nucleus used 100. Doubling because smallholder is more complex
-    STEPS_PER_EPOCH = 200
+    STEPS_PER_EPOCH = 400
     
     #reduces the max number of field instances
-    MAX_GT_INSTANCES = 29 # determined using inspect_crop_data.ipynb
+    # MAX_GT_INSTANCES = 29 # for smallholder determined using inspect_crop_data.ipynb
+    MAX_GT_INSTANCES = 7 # for cp determined using inspect_crop_data.ipynb
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 100
@@ -95,7 +97,7 @@ class WV2Config(Config):
         "rpn_bbox_loss": 1.,
         "mrcnn_class_loss": 1.,
         "mrcnn_bbox_loss": 1.,
-        "mrcnn_mask_loss": 1.
+        "mrcnn_mask_loss": 3.
     }
     
 
