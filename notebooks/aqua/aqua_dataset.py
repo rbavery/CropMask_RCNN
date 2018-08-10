@@ -2,14 +2,17 @@ from mrcnn import utils
 import os
 import pandas as pd
 import skimage.io as skio
+from skimage import img_as_float
+from scipy import ndimage
 import numpy as np
-# import preprocess as pp
+import aqua_preprocess as pp
+
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
 # Results directory
 # Save submission files and test/train split csvs here
-RESULTS_DIR = os.path.join(ROOT_DIR, "results") 
-
+RESULTS_DIR = pp.RESULTS
+AQUA_CLASS = pp.AQUA_CLASS
 ############################################################
 #  Dataset
 ############################################################
@@ -24,6 +27,9 @@ class AquaDataset(utils.Dataset):
         """
         # Load image
         image = skio.imread(self.image_info[image_id]['path'])
+        
+        # Set datatype to float64
+        image = img_as_float(image)
     
         assert image.shape[-1] == 4
         assert image.ndim == 3
@@ -48,9 +54,9 @@ class AquaDataset(utils.Dataset):
         assert subset in ["train", "test"]
         dataset_dir = os.path.join(dataset_dir, subset)
         
-        train_ids = pd.read_csv(os.path.join(RESULTS_DIR, 'train_ids.csv'))
+        train_ids = pd.read_csv(os.path.join(pp.RESULTS, 'train_ids.csv'))
         train_list = list(train_ids['train'])
-        test_ids = pd.read_csv(os.path.join(RESULTS_DIR, 'test_ids.csv'))
+        test_ids = pd.read_csv(os.path.join(pp.RESULTS, 'test_ids.csv'))
         test_list = list(test_ids['test'])
         
         # Set image ids based on subset
@@ -105,9 +111,9 @@ class AquaDataset(utils.Dataset):
                     instance[labels==obj] = 1
 
                     # Add instance mask to mask array
-                    mask.append(m)
+                    mask.append(instance)
                     classes.append(AQUA_CLASS[instance_class])
-                    assert m.ndim == 2        
+                    assert instance.ndim == 2        
         
         # Check if mask is still empty and, if so, add a np array of zeros
         if not mask:
@@ -116,9 +122,12 @@ class AquaDataset(utils.Dataset):
             
         mask = np.stack(mask, axis=-1)
         assert mask.ndim == 3
-        # Return mask, and array of class IDs of each instance. Since we have
-        # one class ID, we return an array of ones
-        return mask, np.ones([mask.shape[-1]], dtype=np.int32)
+        
+        # Convert classess to proper data type
+        classes = np.array(classes, dtype = np.uint8)
+
+        # Return mask, and array of class IDs of each instance
+        return mask, classes
     
     def image_reference(self, image_id):
         """Return the path of the image."""
