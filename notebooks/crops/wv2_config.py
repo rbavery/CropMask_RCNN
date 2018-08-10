@@ -32,15 +32,15 @@ class WV2Config(Config):
         self.IMAGE_META_SIZE = 1 + 3 + 3 + 4 + 1 + self.NUM_CLASSES
         self.CHANNELS_NUM = N
     
-    # LEARNING_RATE = .0001 
+    LEARNING_RATE = .0001 
     
     # Image mean (RGBN RGBN) from WV2_MRCNN_PRE.ipynb
     # filling with N values, need to compute mean of each channel
     # values are for gridded wv2 no partial grids
-    MEAN_PIXEL = np.array([259.6, 347.0, 259.8, 416.3, 228.23, 313.4, 187.5, 562.9])
+    MEAN_PIXEL = np.array([200.05, 274.7, 164.04])
     
     # Give the configuration a recognizable name
-    NAME = "wv2-gridded-no-partial"
+    NAME = "wv2-512-cp-labels-allgrowing"
 
     # Batch size is 4 (GPUs * images/GPU).
     # New parralel_model.py allows for multi-gpu
@@ -55,24 +55,24 @@ class WV2Config(Config):
     # Exception("Image size must be dividable by 2 at least 6 times "
     #     "to avoid fractions when downscaling and upscaling."
     #    "For example, use 256, 320, 384, 448, 512, ... etc. "
-    IMAGE_RESIZE_MODE = "crop"
-    IMAGE_MIN_DIM = 256
-    IMAGE_MAX_DIM = 256
+    IMAGE_RESIZE_MODE = "square"
+    IMAGE_MIN_DIM = 512
+    IMAGE_MAX_DIM = 512
 
     # Use smaller anchors because our image and objects are small.
     # Setting Large upper scale since some fields take up nearly 
     # whole image
-    RPN_ANCHOR_SCALES = (16, 32, 64, 128, 180)  # anchor side in pixels
+    RPN_ANCHOR_SCALES = (25, 75, 125, 250, 350)  # anchor side in pixels, determined using inspect_crop_data.ipynb
 
     # Reduce training ROIs per image because the images are small and have
     # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
     TRAIN_ROIS_PER_IMAGE = 100
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 1000
+    STEPS_PER_EPOCH = 500
     
     #reduces the max number of field instances
-    MAX_GT_INSTANCES = 28 # determined using inspect_crop_data.ipynb
+    MAX_GT_INSTANCES = 63 # determined using inspect_crop_data.ipynb
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 100

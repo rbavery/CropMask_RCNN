@@ -8,6 +8,7 @@ Installation:
 1. Create a conda environment for this repo. You can call it "maskrcnn"
 2. Go to this repo and install MaskRCNN in the conda environment https://github.com/agroimpacts/Mask_RCNN
 3. Run `pip install -r requirements.txt` from the root of this directory while your environment is active.
+   - Note: This is an edited version of matterport's mrcnn to work with multispectral satellite imagery (more than 3 channels). Updates to the original mrcnn are pulled in manually
 4. Email/Slack Ryan with any questions, ravery@ucsb.edu
 
 This environment will also allow you to interact with the demos in https://github.com/agroimpacts/Mask_RCNN

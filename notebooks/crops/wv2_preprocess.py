@@ -11,12 +11,12 @@ import numpy as np
 
 ROOT_DIR = os.path.abspath("../../")
 DATASET_DIR = os.path.join(ROOT_DIR, 'data/raw/wv2')
-EIGHTCHANNEL_DIR = os.path.join(DATASET_DIR, 'eightchannels')
+REORDERED_DIR = os.path.join(DATASET_DIR, 'reordered_tifs')
 TRAIN_DIR = os.path.join(DATASET_DIR, 'train')
 TEST_DIR = os.path.join(DATASET_DIR, 'test')
 WV2_DIR = os.path.join(DATASET_DIR, 'adjusted_gridded_tifs')
 LABELS_DIR = os.path.join(DATASET_DIR, 'adjusted_gridded_labels')
-CONNECTED_COMP_DIR = os.path.join(DATASET_DIR, 'connected_comp_labels')
+CONNECTED_COMP_DIR = os.path.join(DATASET_DIR, 'connected_component_labels')
 OPENED_LABELS_DIR = os.path.join(DATASET_DIR, 'opened_labels')
 # Results directory
 # Save submission files and test/train split csvs here
@@ -24,7 +24,7 @@ RESULTS_DIR = os.path.join(ROOT_DIR, "results/wv2/")
 try:
     os.mkdir(OPENED_LABELS_DIR)
     os.mkdir(CONNECTED_COMP_DIR)
-    os.mkdir(EIGHTCHANNEL_DIR)
+    os.mkdir(REORDERED_DIR)
     os.mkdir(MODEL_DIR)
     os.mkdir(TRAIN_DIR)
     os.mkdir(TEST_DIR)
@@ -47,31 +47,25 @@ def preprocess():
             shutil.rmtree(os.path.join(directory,f))
 
     def load_merge_wv2(image_id, source_dir):
-        """Load the specified wv2 os/gs image pairs and return a [H,W,8] 
-        Numpy array. Channels are ordered [B, G, R, NIR, B, G, R, NIR], OS 
-        first.
+        """Load the specified wv2 os/gs image pairs and return a [H,W,3] 
+        Numpy array. Channels are ordered [B, G, R], Growing Season 
+        Keeping dode comments for stacking on/off season into 8 channel tensor.
         """
         # Load image
-        os_path = source_dir+'/'+image_id+'_MS_OS.tif'
         gs_path = source_dir+'/'+image_id+'_MS_GS.tif'
-        os_image = skio.imread(os_path)
         gs_image = skio.imread(gs_path)
         # If has more than 4 bands, select correct bands 
         # will need to provide image config in future
         # to programmaticaly use correct band mappings
-        if os_image.shape[-1] != 4:
-            os_image = np.dstack((os_image[:,:,1:3],os_image[:,:,4],os_image[:,:,6]))
-        if gs_image.shape[-1] != 4:
-            gs_image = np.dstack((gs_image[:,:,1:3],gs_image[:,:,4],gs_image[:,:,6]))
-        stacked_image = np.dstack((os_image, gs_image))
-        stacked_image_path = EIGHTCHANNEL_DIR +'/'+ image_id + '_OSGS_ms.tif'
-        assert stacked_image.ndim == 3
-        if -1.7e+308 not in stacked_image:
-            skio.imsave(stacked_image_path,stacked_image, plugin='tifffile')
-        #else:
-            #might try later
-            #stacked_image[stacked_image==-1.7e+308]=0
-            #skio.imsave(stacked_image_path,stacked_image, plugin='tifffile')
+        if gs_image.shape[-1] != 3:
+            assert gs_image.shape == (512, 512, 8)
+            gs_image = np.dstack((gs_image[:,:,1:3],gs_image[:,:,4])) #RGB for wv2
+        #Need to functionalize all of these floating for loops
+        gs_image_path = REORDERED_DIR +'/'+ image_id + '_GS_RGB.tif'
+        assert gs_image.ndim == 3
+        gs_image[gs_image < 0]=0
+        assert gs_image.shape == (512, 512, 3)
+        skio.imsave(gs_image_path, gs_image, plugin='tifffile')
             
     # all files, including ones we don't care about
     file_ids_all = next(os.walk(WV2_DIR))[2]
@@ -81,17 +75,17 @@ def preprocess():
     assert len(image_ids_all) == len(set(image_ids_all))
 
     image_ids_gs = [image_id for image_id in image_ids_all if 'GS' in image_id]
-    image_ids_os = [image_id for image_id in image_ids_all if 'OS' in image_id]
+    #image_ids_os = [image_id for image_id in image_ids_all if 'OS' in image_id]
 
     #check for equality
-    assert len(image_ids_os) == len(image_ids_gs)
-
+    # assert len(image_ids_os) == len(image_ids_gs)
+    # only select growing season images
     image_ids_short = [image_id[0:9] for image_id in image_ids_gs]
 
     for imid in image_ids_short:
         load_merge_wv2(imid, WV2_DIR)
 
-    image_list = next(os.walk(EIGHTCHANNEL_DIR))[2]
+    image_list = next(os.walk(REORDERED_DIR))[2]
     
     def move_img_to_folder(filename):
         '''Moves a file with identifier pattern ZA0165086_MS_GS.tif to a 
@@ -105,7 +99,7 @@ def preprocess():
         new_path = os.path.join(folder_name, 'image')
         mask_path = os.path.join(folder_name, 'masks')
         os.mkdir(new_path)
-        file_path = os.path.join(EIGHTCHANNEL_DIR,filename)
+        file_path = os.path.join(REORDERED_DIR,filename)
         os.rename(file_path, os.path.join(new_path, filename))
         os.mkdir(mask_path)
 
@@ -123,18 +117,20 @@ def preprocess():
         arr = skim.binary_opening(arr, kernel)
         arr=1*arr
         assert arr.ndim == 2
+        assert arr.shape == (512, 512)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
             skio.imsave(opened_path, 1*arr)
 
     label_list = next(os.walk(OPENED_LABELS_DIR))[2]
-
+    # save connected components and give each a number at end of id
     for name in label_list:
         arr = skio.imread(os.path.join(OPENED_LABELS_DIR,name))
         blob_labels = measure.label(arr, background=0)
         blob_vals = np.unique(blob_labels)
         for blob_val in blob_vals[blob_vals!=0]:
             labels_copy = blob_labels.copy()
+            assert labels_copy.shape == (512, 512)
             labels_copy[blob_labels!=blob_val] = 0
             labels_copy[blob_labels==blob_val] = 1
             label_name = name[0:15]+str(blob_val)+'.tif'
@@ -160,13 +156,6 @@ def preprocess():
         move_mask_to_folder(mask)
 
     id_list = next(os.walk(TRAIN_DIR))[1]
-    no_field_list = []
-    for fid in id_list:
-        mask_folder = os.path.join(DATASET_DIR,'train',fid, 'masks')
-        if not os.listdir(mask_folder): 
-            no_field_list.append(mask_folder)
-    no_field_frame = pd.DataFrame(no_field_list)
-    no_field_frame.to_csv(os.path.join(DATASET_DIR,'no_field_list.csv'))
     
     for fid in id_list:
         mask_folder = os.path.join(DATASET_DIR, 'train',fid, 'masks')
@@ -174,7 +163,9 @@ def preprocess():
         if not os.listdir(mask_folder):
             im_path = os.path.join(im_folder, os.listdir(im_folder)[0])
             arr = skio.imread(im_path)
+            assert arr.shape == (512, 512, 3)
             mask = np.zeros_like(arr[:,:,0])
+            assert mask.shape == (512, 512)
             assert mask.ndim == 2
             # ignores warning about low contrast image
             with warnings.catch_warnings():

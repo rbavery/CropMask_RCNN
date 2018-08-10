@@ -9,7 +9,6 @@ Written by Waleed Abdulla
 
 import os
 import sys
-import logging
 import random
 import itertools
 import colorsys
@@ -39,12 +38,28 @@ def normalize(arr):
     return arr / arr_max
 
 def reorder_to_brg(image):
-    '''reorders wv2 bands to blue, red, green for imshow'''
-    blue = normalize(image[:,:,1])
-    green = normalize(image[:,:,2])
-    red = normalize(image[:,:,4])
-    nir = normalize(image[:,:,6])
+    '''reorders wv2 bands ordered like RGBNRGN for off/onseason
+    to blue, red, green for imshow
+    '''
+    blue = normalize(image[:,:,2])
+    green = normalize(image[:,:,1])
+    red = normalize(image[:,:,0])
+    nir = normalize(image[:,:,3])
     return np.stack([blue, red, green], axis=-1)
+
+def percentile_rescale(arr):
+    '''
+    Rescales and applies other exposure functions to improve image vis. 
+    http://scikit-image.org/docs/dev/api/skimage.exposure.html#skimage.exposure.rescale_intensity
+    '''
+    rescaled_arr = np.zeros_like(arr)
+    for i in range(0,arr.shape[-1]):
+        val_range = (np.percentile(arr[:,:,i], 1), np.percentile(arr[:,:,i], 99))
+        rescaled_channel = exposure.rescale_intensity(arr[:,:,i], val_range)
+        rescaled_arr[:,:,i] = rescaled_channel
+#     rescaled_arr= exposure.adjust_gamma(rescaled_arr, gamma=1) #adjust from 1 either way
+#     rescaled_arr= exposure.adjust_sigmoid(rescaled_arr, cutoff=.50) #adjust from .5 either way 
+    return rescaled_arr
 
 def display_images(images, titles=None, cols=4, cmap=None, norm=None,
                    interpolation=None):
@@ -54,7 +69,7 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
     cols: number of images per row
     cmap: Optional. Color map to use. For example, "Blues".
     norm: Optional. A Normalize instance to map values to colors.
-    interpolation: Optional. Image interporlation to use for display.
+    interpolation: Optional. Image interpolation to use for display.
     """
     titles = titles if titles is not None else [""] * len(images)
     rows = len(images) // cols + 1
@@ -71,11 +86,21 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
             plt.imshow(brg_adap, cmap='brg',
                    norm=norm, interpolation=interpolation)
             i += 1
+        elif i == 1 and image.shape[-1]==3: #added for RGB satellite imagery, tested with wv2
+            image[image < 0] = 0
+            image = percentile_rescale(image)
+            plt.figure()
+            plt.subplot(rows, cols, i)
+            plt.title(title, fontsize=9)
+            plt.axis('off')
+            plt.imshow(image, cmap='brg',
+                   norm=norm, interpolation=interpolation)
+            i += 1
         else:
             plt.subplot(rows, cols, i)
             plt.title(title, fontsize=9)
             plt.axis('off')
-            plt.imshow(image.astype(np.uint8), cmap=cmap,
+            plt.imshow(image, cmap=cmap,
                    norm=norm, interpolation=interpolation)
             i += 1
     plt.show()
@@ -188,9 +213,14 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             verts = np.fliplr(verts) - 1
             p = Polygon(verts, facecolor="none", edgecolor=color)
             ax.add_patch(p)
-    brg = reorder_to_brg(image)
-    brg_adap = exposure.equalize_adapthist(brg, clip_limit=0.0055)
-    ax.imshow(brg_adap) # added band reordering for wv2 and adaptive stretch
+    if image.shape[-1] == 8: # added for wv2 using RGBNRGB for two seasons        
+        brg = reorder_to_brg(image)
+        brg_adap = exposure.equalize_adapthist(brg, clip_limit=0.0055)
+        ax.imshow(brg_adap) # added band reordering for wv2 and adaptive stretch
+    else:
+        image[image < 0] = 0
+        image = percentile_rescale(image)
+        ax.imshow(image, cmap='brg')
     if auto_show:
         plt.show()
 
@@ -284,7 +314,6 @@ def draw_rois(image, rois, refined_rois, mask, class_ids, class_names, limit=10)
             m = utils.unmold_mask(mask[id], rois[id]
                                   [:4].astype(np.int32), image.shape)
             masked_image = apply_mask(masked_image, m, color)
-    
     if image.shape[-1] == 8: # added for wv2
         brg = reorder_to_brg(image)
         brg_adap = exposure.equalize_adapthist(brg, clip_limit=0.0055)
@@ -304,8 +333,10 @@ def draw_box(image, box, color):
     """Draw 3-pixel width bounding boxes on the given image array.
     color: list of 3 int values for RGB.
     """
-    if image.shape[-1] == 8: # added for wv2
+
+    if image.shape[-1] == 8: # added for 8 channel wv2
         image = reorder_to_brg(image)
+
     y1, x1, y2, x2 = box
     image[y1:y1 + 2, x1:x2] = color
     image[y2:y2 + 2, x1:x2] = color
@@ -334,7 +365,7 @@ def display_top_masks(image, mask, class_ids, class_names, limit=4):
         m = np.sum(m * np.arange(1, m.shape[-1] + 1), -1)
         to_display.append(m)
         titles.append(class_names[class_id] if class_id != -1 else "-")
-    display_images(to_display, titles=titles, cols=limit + 1, cmap="Blues_r")
+    display_images(to_display, titles=titles, cols=limit + 1, cmap="brg")
 
 
 def plot_precision_recall(AP, precisions, recalls):
@@ -358,7 +389,7 @@ def plot_overlaps(gt_class_ids, pred_class_ids, pred_scores,
     gt_class_ids: [N] int. Ground truth class IDs
     pred_class_id: [N] int. Predicted class IDs
     pred_scores: [N] float. The probability scores of predicted classes
-    overlaps: [pred_boxes, gt_boxes] IoU overlaps of predictins and GT boxes.
+    overlaps: [pred_boxes, gt_boxes] IoU overlaps of predictions and GT boxes.
     class_names: list of all class names in the dataset
     threshold: Float. The prediction probability required to predict a class
     """
@@ -394,7 +425,7 @@ def plot_overlaps(gt_class_ids, pred_class_ids, pred_scores,
 def draw_boxes(image, boxes=None, refined_boxes=None,
                masks=None, captions=None, visibilities=None,
                title="", ax=None):
-    """Draw bounding boxes and segmentation masks with differnt
+    """Draw bounding boxes and segmentation masks with different
     customizations.
 
     boxes: [N, (y1, x1, y2, x2, class_id)] in image coordinates.
@@ -403,7 +434,7 @@ def draw_boxes(image, boxes=None, refined_boxes=None,
     masks: [N, height, width]
     captions: List of N titles to display on each box
     visibilities: (optional) List of values of 0, 1, or 2. Determine how
-        prominant each bounding box should be.
+        prominent each bounding box should be.
     title: An optional title to show over the image
     ax: (optional) Matplotlib axis to draw on.
     """
@@ -497,7 +528,6 @@ def draw_boxes(image, boxes=None, refined_boxes=None,
         ax.imshow(brg_adap)
     else:
         ax.imshow(masked_image.astype(np.uint8))
-
 
 def display_table(table):
     """Display values in a table format.
