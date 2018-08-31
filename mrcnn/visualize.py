@@ -32,6 +32,9 @@ from mrcnn import utils
 ############################################################
 #  Visualization
 ############################################################
+def testfnc():
+    print("This is a test")
+
 def normalize(arr):
     ''' Function to normalize an input array to 0-1 '''
     arr_max = arr.max()
@@ -96,6 +99,17 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
             plt.imshow(image, cmap='brg',
                    norm=norm, interpolation=interpolation)
             i += 1
+        elif i == 1 and image.shape[-1]==4: #added for R,G,B,NIR satellite imagery, tested with planet
+            image[image < 0] = 0
+            image = reorder_to_brg(image) # select only B,R,G bands for visualization
+            image = percentile_rescale(image)
+            plt.figure()
+            plt.subplot(rows, cols, i)
+            plt.title(title, fontsize=9)
+            plt.axis('off')
+            plt.imshow(image, cmap='brg',
+                   norm=norm, interpolation=interpolation)
+            i += 1    
         else:
             plt.subplot(rows, cols, i)
             plt.title(title, fontsize=9)
@@ -217,6 +231,10 @@ def display_instances(image, boxes, masks, class_ids, class_names,
         brg = reorder_to_brg(image)
         brg_adap = exposure.equalize_adapthist(brg, clip_limit=0.0055)
         ax.imshow(brg_adap) # added band reordering for wv2 and adaptive stretch
+    elif image.shape[-1] == 4: # added for Planet using B,G,R,NIR
+        brg = reorder_to_brg(image)
+        brg = percentile_rescale(image)
+        ax.imshow(brg) 
     else:
         image[image < 0] = 0
         image = percentile_rescale(image)

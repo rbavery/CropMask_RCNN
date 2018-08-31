@@ -34,12 +34,13 @@ class AquaConfig(Config):
         self.IMAGE_META_SIZE = 1 + 3 + 3 + 4 + 1 + self.NUM_CLASSES
         self.CHANNELS_NUM = N
     
-    LEARNING_RATE = .00005 
+    LEARNING_RATE = .00002 
     
     # Image mean (RGBN RGBN) from WV2_MRCNN_PRE.ipynb
     # filling with N values, need to compute mean of each channel
     # values are for gridded wv2 no partial grids
-    MEAN_PIXEL = np.array([225.25, 308.74, 184.93])
+#     MEAN_PIXEL = np.array([225.25, 308.74, 184.93])
+    MEAN_PIXEL = np.array([717.92984565, 776.5394342 , 573.70299748, 638.11547247])
     
     # Give the configuration a recognizable name
     NAME = "aqua-planet"
@@ -61,18 +62,21 @@ class AquaConfig(Config):
     IMAGE_MIN_DIM = 256
     IMAGE_MAX_DIM = 256
 
-    # anchor side in pixels, determined using inspect_crop_data.ipynb. can specify more or less scales
-    # RPN_ANCHOR_SCALES = (100, 150, 250, 375) # for cp
-    RPN_ANCHOR_SCALES = (20, 60, 100, 140) # for smallholder
+    # anchor side in pixels, determined using inspect_aqua_data.ipynb. can specify more or less scales
+    RPN_ANCHOR_SCALES = (20, 60, 100, 140) # for aquaculture
+    
+    # Ratios of anchors at each cell (width/height)
+    # A value of 1 represents a square anchor, and 0.5 is a wide anchor
+    RPN_ANCHOR_RATIOS = [0.5, 1, 2]
 
     # Aim to allow ROI sampling to pick 33% positive ROIs. This is always 33% in inspect_data nb, unsure if that is accurate.
-    TRAIN_ROIS_PER_IMAGE = 300
+    TRAIN_ROIS_PER_IMAGE = 100
 
     # Unsure what best step size is but nucleus used 100. Doubling because smallholder is more complex
     STEPS_PER_EPOCH = 100
     
     #reduces the max number of field instances
-    MAX_GT_INSTANCES = 30 # for cp determined using inspect_crop_data.ipynb
+    MAX_GT_INSTANCES = 46 # for cp determined using inspect_aqua_data.ipynb
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 100
@@ -96,7 +100,7 @@ class AquaConfig(Config):
         "rpn_bbox_loss": 1.,
         "mrcnn_class_loss": 1.,
         "mrcnn_bbox_loss": 1.,
-        "mrcnn_mask_loss": 3.
+        "mrcnn_mask_loss": 1.
     }
     
 

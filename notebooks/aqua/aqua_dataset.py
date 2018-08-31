@@ -8,7 +8,8 @@ import numpy as np
 import aqua_preprocess as pp
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../../")
+# ROOT_DIR = os.path.abspath("../../")
+ROOT_DIR = pp.ROOT
 # Results directory
 # Save submission files and test/train split csvs here
 RESULTS_DIR = pp.RESULTS
@@ -27,11 +28,7 @@ class AquaDataset(utils.Dataset):
         """
         # Load image
         image = skio.imread(self.image_info[image_id]['path'])
-        
-        # Set datatype to float64
-        image = img_as_float(image)
     
-        assert image.shape[-1] == 4
         assert image.ndim == 3
     
         return image
@@ -117,14 +114,14 @@ class AquaDataset(utils.Dataset):
         
         # Check if mask is still empty and, if so, add a np array of zeros
         if not mask:
-            m = np.zeros([256, 256], dtype=np.uint8)
+            m = np.zeros([256, 256], dtype=np.bool)
             mask.append(m)
             
-        mask = np.stack(mask, axis=-1)
+        mask = np.stack(mask, axis=-1).astype(np.bool)
         assert mask.ndim == 3
         
         # Convert classess to proper data type
-        classes = np.array(classes, dtype = np.uint8)
+        classes = np.array(classes, dtype = np.int32)
 
         # Return mask, and array of class IDs of each instance
         return mask, classes
