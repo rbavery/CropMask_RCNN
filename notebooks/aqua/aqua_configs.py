@@ -40,7 +40,7 @@ class AquaConfig(Config):
     # filling with N values, need to compute mean of each channel
     # values are for gridded wv2 no partial grids
 #     MEAN_PIXEL = np.array([225.25, 308.74, 184.93])
-    MEAN_PIXEL = np.array([717.92984565, 776.5394342 , 573.70299748, 638.11547247])
+    MEAN_PIXEL = np.array([320.04820512, 295.6292246 , 210.93718329])
     
     # Give the configuration a recognizable name
     NAME = "aqua-planet"
@@ -60,7 +60,7 @@ class AquaConfig(Config):
     #    "For example, use 256, 320, 384, 448, 512, ... etc. "
     IMAGE_RESIZE_MODE = "square"
     IMAGE_MIN_DIM = 256
-    IMAGE_MAX_DIM = 256
+    IMAGE_MAX_DIM = 512
 
     # anchor side in pixels, determined using inspect_aqua_data.ipynb. can specify more or less scales
     RPN_ANCHOR_SCALES = (20, 60, 100, 140) # for aquaculture
@@ -76,7 +76,7 @@ class AquaConfig(Config):
     STEPS_PER_EPOCH = 100
     
     #reduces the max number of field instances
-    MAX_GT_INSTANCES = 46 # for cp determined using inspect_aqua_data.ipynb
+    MAX_GT_INSTANCES = 3 # for cp determined using inspect_aqua_data.ipynb
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 100

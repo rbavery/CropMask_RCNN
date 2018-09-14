@@ -21,7 +21,7 @@ random.seed(1)
 # Directory setup
 ROOT = "/home/tclavelle/tana-crunch/CropMask_RCNN"
 DATASET = os.path.join(ROOT, 'data/aqua')
-PREPPED = os.path.join(DATASET, 'prepped_planet')
+PREPPED = os.path.join(DATASET, 'gridded_planet')
 TRAIN = os.path.join(DATASET, 'train')
 TEST = os.path.join(DATASET, 'test')
 RESULTS = os.path.join(DATASET, 'results')

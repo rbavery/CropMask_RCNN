@@ -55,6 +55,7 @@ sys.path.append(ROOT_DIR)  # To find local version of the library
 # Import Mask RCNN
 from mrcnn import model as modellib
 from mrcnn import visualize
+from mrcnn import utils
 
 # Path to trained weights file
 COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "models/mask_rcnn_coco.h5")
@@ -71,12 +72,12 @@ RESULTS_DIR = pp.RESULTS
 def train(model, dataset_dir, subset):
     """Train the model."""
     # Training dataset.
-    dataset_train = aqua_dataset.AquaDataset(4)
+    dataset_train = aqua_dataset.AquaDataset(3)
     dataset_train.load_aqua(dataset_dir, subset)
     dataset_train.prepare()
 
     # Validation dataset
-    dataset_val = aqua_dataset.AquaDataset(4)
+    dataset_val = aqua_dataset.AquaDataset(3)
     dataset_val.load_aqua(dataset_dir, "test")
     dataset_val.prepare()
 
@@ -250,9 +251,9 @@ if __name__ == '__main__':
 
         # Configurations
         if args.command == "train":
-            config = aqua_configs.AquaConfig(4)
+            config = aqua_configs.AquaConfig(3)
         else:
-            config = aqua_configs.AquaInferenceConfig(4)
+            config = aqua_configs.AquaInferenceConfig(3)
         config.display()
 
         # Create model

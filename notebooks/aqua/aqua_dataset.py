@@ -14,6 +14,7 @@ ROOT_DIR = pp.ROOT
 # Save submission files and test/train split csvs here
 RESULTS_DIR = pp.RESULTS
 AQUA_CLASS = pp.AQUA_CLASS
+
 ############################################################
 #  Dataset
 ############################################################
@@ -28,6 +29,10 @@ class AquaDataset(utils.Dataset):
         """
         # Load image
         image = skio.imread(self.image_info[image_id]['path'])
+        
+        # If has an alpha channel, remove it for consistency
+        if image.shape[-1] == 4:
+            image = image[..., :3]
     
         assert image.ndim == 3
     
@@ -112,9 +117,9 @@ class AquaDataset(utils.Dataset):
                     classes.append(AQUA_CLASS[instance_class])
                     assert instance.ndim == 2        
         
-        # Check if mask is still empty and, if so, add a np array of zeros
+        # Check if mask is still empty and, if so, add a np array of zeros (FIX THIS TO MATCH IMAGE SIZE)
         if not mask:
-            m = np.zeros([256, 256], dtype=np.bool)
+            m = np.zeros([512, 512], dtype=np.bool)
             mask.append(m)
             
         mask = np.stack(mask, axis=-1).astype(np.bool)
