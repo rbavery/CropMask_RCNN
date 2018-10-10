@@ -10,16 +10,16 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
        the command line as such:
 
     # Train a new model starting from ImageNet weights
-    python3 crop_mask.py train --dataset=data/raw/wv2 --subset=train --weights=imagenet
+    python3 aqua_mask.py train --dataset=data/aqua --subset=train --weights=imagenet
 
     # Train a new model starting from specific weights file
-    python3 crop_mask.py train --dataset=data/raw/wv2 --subset=train --weights=/path/to/weights.h5
+    python3 aqua_mask.py train --dataset=data/aqua --subset=train --weights=/path/to/weights.h5
 
     # Resume training a model that you had trained earlier
-    python3 crop_mask.py train --dataset=data/raw/wv2 --subset=train --weights=last
+    python3 aqua_mask.py train --dataset=data/aqua --subset=train --weights=last
 
     # Generate submission file
-    python3 crop_mask.py detect --dataset=data/raw/wv2 --subset=train --weights=<last or /path/to/weights.h5>
+    python3 aqua_mask.py detect --dataset=data/aqua --subset=train --weights=<last or /path/to/weights.h5>
 """
 
 

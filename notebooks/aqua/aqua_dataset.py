@@ -119,7 +119,7 @@ class AquaDataset(utils.Dataset):
         
         # Check if mask is still empty and, if so, add a np array of zeros (FIX THIS TO MATCH IMAGE SIZE)
         if not mask:
-            m = np.zeros([512, 512], dtype=np.bool)
+            m = np.zeros([256, 256], dtype=np.bool)
             mask.append(m)
             
         mask = np.stack(mask, axis=-1).astype(np.bool)
