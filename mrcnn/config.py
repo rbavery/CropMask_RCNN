@@ -94,7 +94,7 @@ class Config(object):
     # ROIs kept after tf.nn.top_k and before non-maximum suppression
     PRE_NMS_LIMIT = 6000
 
-    # ROIs kept after non-maximum suppression (training and inference)
+    # ROIs kept after non-maximum supression (training and inference)
     POST_NMS_ROIS_TRAINING = 2000
     POST_NMS_ROIS_INFERENCE = 1000
 

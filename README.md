@@ -1,3 +1,12 @@
+Applying DL models for classification and segmentation. Follows the nucleus example in 
+https://github.com/agroimpacts/Mask_RCNN pretty closely.
+
+Installation:
+1. Create a conda environment for this repo. You can call it "maskrcnn"
+2. Run `pip install -r requirements.txt` from the root of this directory while your environment is active.
+   - Note: This is an edited version of matterport's mrcnn to work with multispectral satellite imagery (more than 3 channels).
+3. Make an Issue if you have any questions or suggestions!
+
 # Mask R-CNN for Object Detection and Segmentation
 
 This is an implementation of [Mask R-CNN](https://arxiv.org/abs/1703.06870) on Python 3, Keras, and TensorFlow. The model generates bounding boxes and segmentation masks for each instance of an object in the image. It's based on Feature Pyramid Network (FPN) and a ResNet101 backbone.
@@ -239,3 +248,4 @@ A computer vision class project by HU Shiyu to apply the color pop effect on peo
 
 ### [GRASS GIS Addon](https://github.com/ctu-geoforall-lab/i.ann.maskrcnn) to generate vector masks from geospatial imagery. Based on a [Master's thesis](https://github.com/ctu-geoforall-lab-projects/dp-pesek-2018) by Ondřej Pešek.
 ![GRASS GIS Image](assets/project_grass_gis.png)
+

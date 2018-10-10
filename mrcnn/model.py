@@ -58,12 +58,13 @@ class BatchNorm(KL.BatchNormalization):
     as linear layer.
     """
     def call(self, inputs, training=None):
-        """
+        """ 
         Note about training values:
             None: Train BN layers. This is the normal mode
             False: Freeze BN layers. Good when batch size is small
             True: (don't use). Set layer in training mode even when making inferences
         """
+
         return super(self.__class__, self).call(inputs, training=training)
 
 
@@ -399,6 +400,7 @@ class PyramidROIAlign(KE.Layer):
             level_boxes = tf.gather_nd(boxes, ix)
 
             # Box indices for crop_and_resize.
+
             box_indices = tf.cast(ix[:, 0], tf.int32)
 
             # Keep track of which box is mapped to which level
@@ -583,6 +585,7 @@ def detection_targets_graph(proposals, gt_class_ids, gt_boxes, gt_masks, config)
     # Compute mask targets
     boxes = positive_rois
     if config.USE_MINI_MASK:
+
         # Transform ROI coordinates from normalized image space
         # to normalized mini-mask space.
         y1, x1, y2, x2 = tf.split(positive_rois, 4, axis=1)
@@ -738,6 +741,7 @@ def refine_detections_graph(rois, probs, deltas, window, config):
                 tf.gather(pre_nms_scores, ixs),
                 max_output_size=config.DETECTION_MAX_INSTANCES,
                 iou_threshold=config.DETECTION_NMS_THRESHOLD)
+
         # Map indices
         class_keep = tf.gather(keep, tf.gather(ixs, class_keep))
         # Pad with -1 so returned tensors have the same shape
@@ -841,6 +845,7 @@ def rpn_graph(feature_map, anchors_per_location, anchor_stride):
         rpn_bbox: [batch, H * W * anchors_per_location, (dy, dx, log(dh), log(dw))] Deltas to be
                   applied to anchors.
     """
+
     # TODO: check if stride of 2 causes alignment issues if the feature map
     # is not even.
     # Shared convolutional base of the RPN
@@ -1186,7 +1191,6 @@ def mrcnn_mask_loss_graph(target_masks, target_class_ids, pred_masks):
 def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
                   use_mini_mask=False):
     """Load and return ground truth data for an image (image, mask, bounding boxes).
-
     augment: (deprecated. Use augmentation instead). If true, apply random
         image augmentation. Currently, only horizontal flipping is offered.
     augmentation: Optional. An imgaug (https://github.com/aleju/imgaug) augmentation.
@@ -1351,6 +1355,7 @@ def build_detection_targets(rpn_rois, gt_class_ids, gt_boxes, gt_masks, config):
     # Negative ROIs are those with max IoU 0.1-0.5 (hard example mining)
     # TODO: To hard example mine or not to hard example mine, that's the question
     # bg_ids = np.where((rpn_roi_iou_max >= 0.1) & (rpn_roi_iou_max < 0.5))[0]
+
     bg_ids = np.where(rpn_roi_iou_max < 0.5)[0]
 
     # Subsample ROIs. Aim for 33% foreground.
@@ -1366,6 +1371,7 @@ def build_detection_targets(rpn_rois, gt_class_ids, gt_boxes, gt_masks, config):
         keep_bg_ids = np.random.choice(bg_ids, remaining, replace=False)
     else:
         keep_bg_ids = bg_ids
+
     # Combine indices of ROIs to keep
     keep = np.concatenate([keep_fg_ids, keep_bg_ids])
     # Need more?
@@ -1851,9 +1857,10 @@ class MaskRCNN():
                             "to avoid fractions when downscaling and upscaling."
                             "For example, use 256, 320, 384, 448, 512, ... etc. ")
 
-        # Inputs
+        # Inputs, changed from original mrcnn to allow variable channels besides 3
         input_image = KL.Input(
             shape=[None, None, config.IMAGE_SHAPE[2]], name="input_image")
+
         input_image_meta = KL.Input(shape=[config.IMAGE_META_SIZE],
                                     name="input_image_meta")
         if mode == "training":
@@ -2301,8 +2308,10 @@ class MaskRCNN():
                     imgaug.augmenters.Fliplr(0.5),
                     imgaug.augmenters.GaussianBlur(sigma=(0.0, 5.0))
                 ])
+
 	    custom_callbacks: Optional. Add custom callbacks to be called
 	        with the keras fit_generator method. Must be list of type keras.callbacks.
+
         no_augmentation_sources: Optional. List of sources to exclude for
             augmentation. A source is string that identifies a dataset and is
             defined in the Dataset class.
@@ -2382,7 +2391,7 @@ class MaskRCNN():
             different sizes.
 
         Returns 3 Numpy matrices:
-        molded_images: [N, h, w, 3]. Images resized and normalized.
+        molded_images: [N, h, w, config.NUM_CHANNELS]. Images resized and normalized.
         image_metas: [N, length of meta data]. Details about each image.
         windows: [N, (y1, x1, y2, x2)]. The portion of the image that has the
             original image (padding excluded).
@@ -2704,7 +2713,7 @@ class MaskRCNN():
         # TODO: can this be optimized to avoid duplicating the anchors?
         anchors = np.broadcast_to(anchors, (self.config.BATCH_SIZE,) + anchors.shape)
         model_in = [molded_images, image_metas, anchors]
-
+        
         # Run inference
         if model.uses_learning_phase and not isinstance(K.learning_phase(), int):
             model_in.append(0.)
