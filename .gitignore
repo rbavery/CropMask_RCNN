@@ -8,6 +8,7 @@ test/
 data/
 models/
 logs/
+*.png
 
 .Rhistory/
 # Byte-compiled / optimized / DLL files
