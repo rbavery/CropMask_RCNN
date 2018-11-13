@@ -1,6 +1,6 @@
 ### currently random, useful functions
 from skimage import exposure
-
+import numpy as np
 
 def percentile_rescale(arr):
     '''
