@@ -70,7 +70,6 @@ def make_dirs():
 
     # Change working directory to project directory
     os.chdir(dirs[0])
-make_dirs()
 
 def yaml_to_band_index(params):
     band_list = []

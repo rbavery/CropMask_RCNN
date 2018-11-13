@@ -24,3 +24,7 @@ def remove_dir_folders(directory):
     folderlist = [ f for f in os.listdir(directory)]
     for f in folderlist:
         shutil.rmtree(os.path.join(directory,f))
+        
+def max_normalize(arr):
+    arr *= (255.0/arr.max())
+    return arr

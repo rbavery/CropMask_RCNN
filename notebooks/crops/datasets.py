@@ -14,15 +14,16 @@ RESULTS_DIR = pp.RESULTS
 #  Dataset
 ############################################################
 
-class WV2Dataset(utils.Dataset):
+class ImageDataset(utils.Dataset):
     """Generates the Imagery dataset."""
     
     def load_image(self, image_id):
-        """Load the specified image and return a [H,W,8] Numpy array.
-        Channels are ordered [B, G, R, NIR]. This is called by the 
+        """Load the specified image and return a [H,W,N] Numpy array.
+        Channels are ordered [B, G, R, ...]. This is called by the 
         Keras data_generator function
         """
         # Load image
+        print(os.getcwd())
         image = skio.imread(self.image_info[image_id]['path'])
     
         assert image.ndim == 3
@@ -41,7 +42,6 @@ class WV2Dataset(utils.Dataset):
                 depending on labels. self.add_class for multi class model.
         """
         # Add classes. We have one class.
-        # Naming the dataset wv2, and the class agriculture
         self.add_class(image_source, 1, class_name)
         assert subset in ["train", "test"]
         dataset_dir = os.path.join(dataset_dir, subset)
@@ -72,7 +72,7 @@ class WV2Dataset(utils.Dataset):
         # Get mask directory from image path
         mask_dir = os.path.join(os.path.dirname(os.path.dirname(info['path'])), "mask")
 
-        # Read mask files from .png image
+        # Read mask files from image
         mask = []
         for f in next(os.walk(mask_dir))[2]:
             if f.endswith(".tif"):
@@ -80,7 +80,7 @@ class WV2Dataset(utils.Dataset):
                 mask.append(m)
                 assert m.ndim == 2
         mask = np.stack(mask, axis=-1)
-        assert mask.ndim == 3
+        # assert mask.ndim == 3
         # Return mask, and array of class IDs of each instance. Since we have
         # one class ID, we return an array of ones
         return mask, np.ones([mask.shape[-1]], dtype=np.int32)

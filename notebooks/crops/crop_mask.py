@@ -68,13 +68,13 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 def train(model, dataset_dir, subset):
     """Train the model."""
     # Training dataset.
-    dataset_train = datasets.WV2Dataset()
-    dataset_train.load_imagery(dataset_dir, "train", image_source='wv2', class_name='agriculture')
+    dataset_train = datasets.ImageDataset()
+    dataset_train.load_imagery(dataset_dir, "train", image_source='landsat', class_name='agriculture')
     dataset_train.prepare()
 
     # Validation dataset
-    dataset_val = datasets.WV2Dataset()
-    dataset_val.load_imagery(dataset_dir, "test", image_source='wv2', class_name='agriculture')
+    dataset_val = datasets.ImageDataset()
+    dataset_val.load_imagery(dataset_dir, "test", image_source='landsat', class_name='agriculture')
     dataset_val.prepare()
 
     # Image augmentation
@@ -171,8 +171,8 @@ def detect(model, dataset_dir, subset):
     os.makedirs(submit_dir)
 
     # Read dataset
-    dataset = datasets.WV2Dataset(3)
-    dataset.load_imagery(dataset_dir, subset, image_source='wv2', class_name='agriculture')
+    dataset = datasets.ImageDataset(3)
+    dataset.load_imagery(dataset_dir, subset, image_source='landsat', class_name='agriculture')
     dataset.prepare()
     # Load over images
     submission = []
@@ -247,9 +247,9 @@ if __name__ == '__main__':
 
         # Configurations
         if args.command == "train":
-            config = model_configs.WV2Config(3)
+            config = model_configs.LandsatConfig(3)
         else:
-            config = model_configs.WV2InferenceConfig(3)
+            config = model_configs.LandsatInferenceConfig(3)
         config.display()
 
         # Create model
