@@ -38,14 +38,13 @@ def normalize(arr):
     return arr / arr_max
 
 def reorder_to_brg(image):
-    '''reorders wv2 bands ordered like RGBNRGN for off/onseason
+    '''reorders landsat bands ordered like RGB for off/onseason
     to blue, red, green for imshow
     '''
-    blue = normalize(image[:,:,2])
+    blue = normalize(image[:,:,0])
     green = normalize(image[:,:,1])
-    red = normalize(image[:,:,0])
-    nir = normalize(image[:,:,3])
-    return np.stack([blue, red, green], axis=-1)
+    red = normalize(image[:,:,2])
+    return np.stack([red, green, blue], axis=-1)
 
 def percentile_rescale(arr):
     '''
@@ -76,7 +75,7 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
     plt.figure(figsize=(14, 14 * rows // cols))
     i = 1
     for image, title in zip(images, titles):
-        if i == 1 and image.shape[-1] == 8: #added for wv2
+        if  image.shape[-1] == 8: #added for wv2
             brg = reorder_to_brg(image)
             brg_adap = exposure.equalize_adapthist(brg, clip_limit=0.0055)
             plt.figure()
@@ -86,8 +85,9 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
             plt.imshow(brg_adap, cmap='brg',
                    norm=norm, interpolation=interpolation)
             i += 1
-        elif i == 1 and image.shape[-1]==3: #added for RGB satellite imagery, tested with wv2
+        elif image.shape[-1]==3: #added for RGB satellite imagery, tested with wv2
             image[image < 0] = 0
+            image = reorder_to_brg(image)
             image = percentile_rescale(image)
             plt.figure()
             plt.subplot(rows, cols, i)
@@ -219,6 +219,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
         ax.imshow(brg_adap) # added band reordering for wv2 and adaptive stretch
     else:
         image[image < 0] = 0
+        image = reorder_to_brg(image)
         image = percentile_rescale(image)
         ax.imshow(image, cmap='brg')
     if auto_show:
@@ -522,12 +523,15 @@ def draw_boxes(image, boxes=None, refined_boxes=None,
                 verts = np.fliplr(verts) - 1
                 p = Polygon(verts, facecolor="none", edgecolor=color)
                 ax.add_patch(p)
-    if image.shape[-1] == 8: # added for wv2
+    if image.shape[-1] == 8: # added for wv2 prob need to remove
         brg = reorder_to_brg(image)
         brg_adap = exposure.equalize_adapthist(brg, clip_limit=0.0055)
         ax.imshow(brg_adap)
     else:
-        ax.imshow(masked_image.astype(np.uint8))
+        masked_image = reorder_to_brg(masked_image)
+        masked_image = exposure.equalize_adapthist(masked_image, clip_limit=0.0055)
+        ax.imshow(masked_image)
+        #ax.imshow(masked_image.astype(np.uint8))
 
 def display_table(table):
     """Display values in a table format.

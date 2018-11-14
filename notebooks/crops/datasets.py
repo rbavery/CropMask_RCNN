@@ -23,7 +23,6 @@ class ImageDataset(utils.Dataset):
         Keras data_generator function
         """
         # Load image
-        print(os.getcwd())
         image = skio.imread(self.image_info[image_id]['path'])
     
         assert image.ndim == 3

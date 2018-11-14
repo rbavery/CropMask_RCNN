@@ -31,8 +31,8 @@ wv2_bands_to_include:
 image_vals:
     dataset: "landsat"
     img_id: "LT05_L1TP_032031_20040318_20160914_01rgb_.tif" #check REORDER folder for what id this should be. If False, operates on whole folder, extent of images and shape pairs must match
-    grid_size: 1024 # in pixel units
-    usable_thresh: .25 #image must have no more than 25% values that are zero from either clouds or no_data (tile edges)
+    grid_size: 512 # in pixel units
+    usable_thresh: .01 #image must have no more than this percentage of values that are zero from either clouds or no_data (tile edges)
     split: .10 # the proportion of samples that will be used for testing
 label_vals:
     class: 3 # this is the integer associated with the particular class you would like to segment. 1: smallholder, 2: large ag, 3:center pivots for the wv2 datasets

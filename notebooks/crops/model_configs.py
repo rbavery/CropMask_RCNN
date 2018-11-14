@@ -33,12 +33,10 @@ class LandsatConfig(Config):
         self.IMAGE_META_SIZE = 1 + 3 + 3 + 4 + 1 + self.NUM_CLASSES
         self.CHANNELS_NUM = N
     
-    LEARNING_RATE = .00005 
+    LEARNING_RATE = .0005 
     
-    # Image mean (RGBN RGBN) from WV2_MRCNN_PRE.ipynb
-    # filling with N values, need to compute mean of each channel
-    # values are for gridded wv2 no partial grids
-    MEAN_PIXEL = np.array([12555.537, 8340.699, 8314.736])
+    # Image mean from inspect_data ipynb (preprocess.py differs for some reason, only slightly by 1os of digits or 1s of digits)
+    MEAN_PIXEL = np.array([701.39, 991.45, 1141.77])
     
     # Give the configuration a recognizable name
     NAME = "landsat-1024-cp"
@@ -46,34 +44,52 @@ class LandsatConfig(Config):
     # Batch size is 4 (GPUs * images/GPU).
     # Keras 2.1.6 works for multi-gpu but takes longer than single GPU currently
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 3
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # background + ag
 
+    # Don't exclude based on confidence. Since we have two classes
+    # then 0.5 is the minimum anyway as it picks between nucleus and BG
+    DETECTION_MIN_CONFIDENCE = 0
+    
     # Use small images for faster training. Determines the image shape.
     # From build() in model.py
     # Exception("Image size must be dividable by 2 at least 6 times "
     #     "to avoid fractions when downscaling and upscaling."
     #    "For example, use 256, 320, 384, 448, 512, ... etc. "
     IMAGE_RESIZE_MODE = "square"
-    IMAGE_MIN_DIM = 1024
-    IMAGE_MAX_DIM = 1024
-
+    IMAGE_MIN_DIM = 512
+    IMAGE_MAX_DIM = 512
+    IMAGE_MIN_SCALE = 2.0
+    
     # anchor side in pixels, determined using inspect_crop_data.ipynb. can specify more or less scales
-    RPN_ANCHOR_SCALES = (25, 28, 55) # for cp
+    RPN_ANCHOR_SCALES = (16, 32, 64, 128) # for cp
     # RPN_ANCHOR_SCALES = (20, 60, 100, 140) # for smallholder
 
     # Aim to allow ROI sampling to pick 33% positive ROIs. This is always 33% in inspect_data nb, unsure if that is accurate.
-    TRAIN_ROIS_PER_IMAGE = 300
+    TRAIN_ROIS_PER_IMAGE = 128
+    
+    # ROIs kept after non-maximum supression (training and inference)
+    POST_NMS_ROIS_TRAINING = 1000
+    POST_NMS_ROIS_INFERENCE = 2000
 
+    # Non-max suppression threshold to filter RPN proposals.
+    # You can increase this during training to generate more propsals.
+    RPN_NMS_THRESHOLD = 0.9
+
+    # How many anchors per image to use for RPN training
+    RPN_TRAIN_ANCHORS_PER_IMAGE = 64
     # Unsure what best step size is but nucleus used 100. Doubling because smallholder is more complex
     STEPS_PER_EPOCH = 100
     
     #reduces the max number of field instances
     # MAX_GT_INSTANCES = 29 # for smallholder determined using inspect_crop_data.ipynb
-    MAX_GT_INSTANCES = 346 # for cp determined using inspect_crop_data.ipynb
-
+    MAX_GT_INSTANCES = 203 # for cp determined using inspect_crop_data.ipynb
+    
+    # Max number of final detections per image
+    DETECTION_MAX_INSTANCES = 400
+    
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 50
     

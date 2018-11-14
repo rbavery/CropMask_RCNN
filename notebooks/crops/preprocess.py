@@ -82,6 +82,7 @@ def yaml_to_band_index(params):
             band_list.append(i)
     return band_list
 
+
 def reorder_images(params):
     """Load the os, gs, both, or any single date images and subset bands. Growing
     Season is stacked first before OS if both true.
@@ -125,7 +126,7 @@ def reorder_images(params):
             for img_path in image_ids:
                 image = skio.imread(os.path.join(SOURCE_IMGS, img_path))
                 image = image[:,:,band_indices] # might be best to sav all image bands in each tiff with tile align notebook since we subset here
-                skio.imsave(img_path, image, plugin='tifffile')
+                skio.imsave(os.path.join(REORDER,img_path), image, plugin='tifffile')
 
 
 def negative_buffer_and_small_filter(params):
