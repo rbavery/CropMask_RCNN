@@ -61,7 +61,7 @@ def percentile_rescale(arr):
     return rescaled_arr
 
 def display_images(images, titles=None, cols=4, cmap=None, norm=None,
-                   interpolation=None):
+                   interpolation=None, save=False):
     """Display the given set of images, optionally with titles.
     images: list or array of image tensors in HWC format.
     titles: optional. A list of titles to display with each image.
@@ -102,6 +102,8 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
             plt.axis('off')
             plt.imshow(image, cmap=cmap,
                    norm=norm, interpolation=interpolation)
+            if save == True:
+                plt.savefig(str(i)+'.png') # added to save feature maps
             i += 1
     plt.show()
 
@@ -195,7 +197,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
         else:
             caption = captions[i]
         ax.text(x1, y1 + 8, caption,
-                color='w', size=11, backgroundcolor="none")
+                color='w', size=16, backgroundcolor="none") #changed size from 11
 
         # Mask
         mask = masks[:, :, i]
@@ -211,7 +213,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
         for verts in contours:
             # Subtract the padding and flip (y, x) to (x, y)
             verts = np.fliplr(verts) - 1
-            p = Polygon(verts, facecolor="none", edgecolor=color)
+            p = Polygon(verts, facecolor="none", edgecolor=color, linewidth=4)
             ax.add_patch(p)
     if image.shape[-1] == 8: # added for wv2 using RGBNRGB for two seasons        
         brg = reorder_to_brg(image)
@@ -221,10 +223,11 @@ def display_instances(image, boxes, masks, class_ids, class_names,
         image[image < 0] = 0
         image = reorder_to_brg(image)
         image = percentile_rescale(image)
+        image = exposure.equalize_adapthist(image, clip_limit=0.0055)
         ax.imshow(image, cmap='brg')
     if auto_show:
         plt.show()
-
+    plt.savefig("/home/rave/prediction-vs-gt.png") # added to save
 
 def display_differences(image,
                         gt_box, gt_class_id, gt_mask,
@@ -459,6 +462,7 @@ def draw_boxes(image, boxes=None, refined_boxes=None,
     ax.set_title(title)
 
     masked_image = image.astype(np.uint32).copy()
+    
     for i in range(N):
         # Box visibility
         visibility = visibilities[i] if visibilities is not None else 1
@@ -532,6 +536,7 @@ def draw_boxes(image, boxes=None, refined_boxes=None,
         masked_image = exposure.equalize_adapthist(masked_image, clip_limit=0.0055)
         ax.imshow(masked_image)
         #ax.imshow(masked_image.astype(np.uint8))
+    plt.savefig('/home/rave/boxes-progress.png')
 
 def display_table(table):
     """Display values in a table format.

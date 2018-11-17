@@ -33,10 +33,10 @@ class LandsatConfig(Config):
         self.IMAGE_META_SIZE = 1 + 3 + 3 + 4 + 1 + self.NUM_CLASSES
         self.CHANNELS_NUM = N
     
-    LEARNING_RATE = .0005 
+    LEARNING_RATE = .0003 
     
     # Image mean from inspect_data ipynb (preprocess.py differs for some reason, only slightly by 1os of digits or 1s of digits)
-    MEAN_PIXEL = np.array([701.39, 991.45, 1141.77])
+    MEAN_PIXEL = np.array([705.89, 993.93, 1127.34])
     
     # Give the configuration a recognizable name
     NAME = "landsat-1024-cp"
@@ -44,14 +44,14 @@ class LandsatConfig(Config):
     # Batch size is 4 (GPUs * images/GPU).
     # Keras 2.1.6 works for multi-gpu but takes longer than single GPU currently
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 3
+    IMAGES_PER_GPU = 2
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # background + ag
 
     # Don't exclude based on confidence. Since we have two classes
     # then 0.5 is the minimum anyway as it picks between nucleus and BG
-    DETECTION_MIN_CONFIDENCE = 0
+    DETECTION_MIN_CONFIDENCE = .7
     
     # Use small images for faster training. Determines the image shape.
     # From build() in model.py
@@ -61,14 +61,14 @@ class LandsatConfig(Config):
     IMAGE_RESIZE_MODE = "square"
     IMAGE_MIN_DIM = 512
     IMAGE_MAX_DIM = 512
-    IMAGE_MIN_SCALE = 2.0
+#     IMAGE_MIN_SCALE = 2.0
     
     # anchor side in pixels, determined using inspect_crop_data.ipynb. can specify more or less scales
-    RPN_ANCHOR_SCALES = (16, 32, 64, 128) # for cp
+    RPN_ANCHOR_SCALES = (32, 64, 128) # for cp
     # RPN_ANCHOR_SCALES = (20, 60, 100, 140) # for smallholder
 
     # Aim to allow ROI sampling to pick 33% positive ROIs. This is always 33% in inspect_data nb, unsure if that is accurate.
-    TRAIN_ROIS_PER_IMAGE = 128
+    TRAIN_ROIS_PER_IMAGE = 600
     
     # ROIs kept after non-maximum supression (training and inference)
     POST_NMS_ROIS_TRAINING = 1000
@@ -76,11 +76,12 @@ class LandsatConfig(Config):
 
     # Non-max suppression threshold to filter RPN proposals.
     # You can increase this during training to generate more propsals.
-    RPN_NMS_THRESHOLD = 0.9
+    RPN_NMS_THRESHOLD = 0.7
 
     # How many anchors per image to use for RPN training
-    RPN_TRAIN_ANCHORS_PER_IMAGE = 64
-    # Unsure what best step size is but nucleus used 100. Doubling because smallholder is more complex
+    RPN_TRAIN_ANCHORS_PER_IMAGE = 128 #64
+    
+    # Unsure what best step size is but nucleus used 100
     STEPS_PER_EPOCH = 100
     
     #reduces the max number of field instances
@@ -103,7 +104,7 @@ class LandsatConfig(Config):
     # If enabled, resizes instance masks to a smaller size to reduce
     # memory load. Recommended when using high-resolution images.
     USE_MINI_MASK = True
-    MINI_MASK_SHAPE = (56, 56)  # (height, width) of the mini-mask
+    MINI_MASK_SHAPE = (28, 28)  # (height, width) of the mini-mask
     
     # Loss weights for more precise optimization. It has been suggested that mrcnn_mask_loss should be weighted higher
     # Can be used for R-CNN training setup.

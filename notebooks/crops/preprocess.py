@@ -263,11 +263,12 @@ def rm_mostly_empty(scene_path, label_path):
     skio.imsave(scene_path, arr)
     pixel_count = arr.shape[0] * arr.shape[1]
     nodata_pixel_count = (arr == 0).sum()
-    if 1-(nodata_pixel_count/pixel_count) < usable_data_threshold:
+    if nodata_pixel_count/pixel_count > usable_data_threshold:
 
         os.remove(scene_path)
         os.remove(label_path)
-        print('removed scene and label, over {}% bad data'.format(usable_data_threshold))
+        print('removed scene and label, {}% bad data'.format(usable_data_threshold))
+
 
 def grid_images(params):
     """
