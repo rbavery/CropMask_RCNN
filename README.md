@@ -1,3 +1,5 @@
+# ARCHIVED - See https://github.com/ecohydro/CropMask_RCNN
+
 Applying DL models for classification and segmentation. Follows the nucleus example in 
 https://github.com/agroimpacts/Mask_RCNN pretty closely.
 
